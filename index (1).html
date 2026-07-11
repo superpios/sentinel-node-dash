@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sentinel Node Dash — dVPN Runner</title>
+<meta name="description" content="Arcade runner powered by live Sentinel dVPN node data from Node Scorecard. Collect real nodes, dodge trackers, earn $P2P.">
+<style>
+:root { --cyan:#00e5ff; --bg:#0a0a1f; --danger:#ff3366; --good:#22ff99; --gold:#ffd54a; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); overflow:hidden; font-family:'Courier New',monospace; color:var(--cyan); }
+canvas { display:block; touch-action:none; }
+#ui { position:absolute; top:10px; left:12px; pointer-events:none; z-index:10; font-size:17px; text-shadow:0 0 10px var(--cyan); line-height:1.5; }
+#muteBtn, #pauseBtn { position:absolute; top:10px; z-index:20; background:rgba(0,229,255,0.12); color:var(--cyan); border:1px solid var(--cyan); border-radius:8px; padding:7px 13px; font-size:16px; cursor:pointer; font-family:inherit; }
+#muteBtn { right:12px; }
+#pauseBtn { right:70px; }
+.panel { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(8,8,26,0.97); padding:30px 40px; border:3px solid var(--cyan); text-align:center; border-radius:16px; z-index:30; max-width:92%; width:560px; box-shadow:0 0 60px rgba(0,229,255,0.55); }
+.panel h1 { margin:0 0 14px; color:var(--cyan); font-size:30px; letter-spacing:1px; }
+.panel h2 { margin:0 0 10px; color:var(--cyan); }
+.panel p { font-size:16px; line-height:1.55; color:#bfefff; }
+button.btn { padding:14px 34px; margin:8px 6px; font-size:18px; background:var(--cyan); color:#001018; border:none; border-radius:10px; cursor:pointer; font-weight:bold; font-family:inherit; transition:transform .08s; }
+button.btn:hover { transform:scale(1.05); }
+button.btn.secondary { background:transparent; color:var(--cyan); border:2px solid var(--cyan); }
+button.quizOpt { display:block; width:100%; margin:8px 0; padding:13px; font-size:16px; background:rgba(0,229,255,0.1); color:var(--cyan); border:2px solid var(--cyan); border-radius:10px; cursor:pointer; font-family:inherit; text-align:left; }
+button.quizOpt:hover { background:rgba(0,229,255,0.28); }
+a { color:var(--cyan); }
+.small { font-size:13px; color:#7fd8e8; }
+.hint { font-size:14px; color:#9fe8f5; margin-top:16px; }
+#nodeStatus { font-size:13px; margin-top:14px; color:#7fd8e8; }
+.skin { cursor:pointer; padding:6px 8px; border:2px solid transparent; border-radius:12px; font-size:12px; color:#7fd8e8; transition:.15s; }
+.skin:hover { border-color:rgba(0,229,255,0.4); }
+.skin.selected { border-color:var(--cyan); background:rgba(0,229,255,0.08); color:var(--cyan); }
+.skin canvas { display:block; margin:0 auto 4px; }
+.tag { display:inline-block; padding:4px 12px; border-radius:20px; font-size:12px; letter-spacing:1px; border:1px solid var(--gold); color:var(--gold); margin-bottom:10px; }
+.badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px; border:1px solid var(--gold); color:var(--gold); margin-left:6px; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="ui">
+<div>SCORE <span id="score">0</span> &nbsp;|&nbsp; $P2P <span id="lives">10</span>/12</div>
+<div>SPEED <span id="speed">1.0</span>x &nbsp;|&nbsp; NODES <span id="streak">0</span> &nbsp;|&nbsp; BEST <span id="best">0</span></div>
+<div>ECOSYSTEM <span id="eco">0</span>/<span id="ecoTot">0</span> &nbsp;|&nbsp; ★<span id="resi">0</span> res &nbsp; ⚡<span id="dc">0</span> dc</div>
+</div>
+<button id="pauseBtn" title="Pause (P)">II</button>
+<button id="muteBtn" title="Sound on/off">&#128266;</button>
+
+<!-- MAIN MENU -->
+<div id="menu" class="panel">
+<h1>&#128640; SENTINEL NODE DASH</h1>
+<p>You are a data packet running through the <b>Sentinel dVPN network</b> — a decentralized bandwidth marketplace.<br><br>
+&#9889; Collect <b style="color:var(--good)">real nodes</b> — live from Node Scorecard.<br>
+&#11088; <b style="color:var(--gold)">Residential</b> nodes (real home lines) pay <b>x2.4</b>; datacenter nodes x1.2.<br>
+&#9888; Dodge <b style="color:var(--danger)">trackers &amp; censorship</b>.<br>
+&#11088; Grab stars to unlock the ecosystem &mdash; <b>each topic &amp; quiz appears only ONCE per run</b>, so the game never nags you twice.</p>
+<p class="hint">TAP / SPACE / &#8593; to jump (double jump!) &nbsp;•&nbsp; P to pause</p>
+<div style="margin:6px 0 4px;font-size:14px;color:#7fd8e8;">CHOOSE YOUR RUNNER</div>
+<div id="skinPicker" style="display:flex;justify-content:center;gap:14px;margin-bottom:14px;">
+  <div class="skin" data-skin="0"><canvas width="70" height="70"></canvas><div>Data Packet</div></div>
+  <div class="skin selected" data-skin="1"><canvas width="70" height="70"></canvas><div>dVPN Shield</div></div>
+  <div class="skin" data-skin="2"><canvas width="70" height="70"></canvas><div>$P2P Coin</div></div>
+</div>
+<button class="btn" id="startBtn" style="font-size:24px;padding:20px 70px;">START RUN</button>
+<div id="nodeStatus">Connecting to Node Scorecard…</div>
+<p class="small">Live data: <a href="https://superpios.github.io/node-scorecard/" target="_blank" rel="noopener">Node Scorecard</a> &nbsp;•&nbsp; <a href="https://sentinel.co" target="_blank" rel="noopener">sentinel.co</a></p>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameover" class="panel" style="display:none;">
+<h1 style="color:var(--danger);">CONNECTION LOST</h1>
+<p id="finalScore" style="font-size:20px;"></p>
+<p class="small">Want real censorship-resistant bandwidth? Explore the <a href="https://sentinel.co" target="_blank" rel="noopener">Sentinel ecosystem</a>.</p>
+<button class="btn" id="againBtn">PLAY AGAIN</button>
+<button class="btn secondary" id="menuBtn">MAIN MENU</button>
+</div>
+
+<!-- DAPP INFO -->
+<div id="infoPanel" class="panel" style="display:none;">
+<div class="tag" id="dappTag"></div>
+<h2 id="dappTitle"></h2>
+<p id="dappDesc"></p>
+<a id="dappLink" href="#" target="_blank" rel="noopener" style="font-size:17px;">&#8594; Learn more</a>
+<div id="topicProgress" class="small" style="margin-top:14px;"></div>
+<button class="btn" id="quizBtn">QUIZ for +$P2P</button>
+<button class="btn secondary" id="continueBtn">CONTINUE RUN</button>
+<div class="small" style="margin-top:6px;">Each topic appears only once per run.</div>
+</div>
+
+<!-- PAUSE -->
+<div id="pausePanel" class="panel" style="display:none;">
+<h2>&#9208; PAUSED</h2>
+<p id="pauseStats" class="small"></p>
+<button class="btn" id="resumeBtn">RESUME</button><br>
+<button class="btn secondary" id="restartBtn">RESTART RUN</button>
+<button class="btn secondary" id="quitBtn">MAIN MENU</button>
+<p class="small" style="margin-top:10px;">P = resume &nbsp;·&nbsp; R = restart &nbsp;·&nbsp; M = menu</p>
+</div>
+
+<!-- QUIZ -->
+<div id="quizPanel" class="panel" style="display:none;">
+<div class="tag" id="quizTag"></div>
+<h2>&#129504; SENTINEL QUIZ</h2>
+<p id="quizQ" style="font-size:18px;"></p>
+<div id="quizOpts"></div>
+<p id="quizResult" style="font-size:17px;min-height:24px;"></p>
+</div>
+
+<script>
+'use strict';
+/* ============================================================
+   SENTINEL NODE DASH — arcade runner promoting the Sentinel
+   dVPN ecosystem. Uses live node data from Node Scorecard:
+   https://superpios.github.io/node-scorecard/latest.json
+   ============================================================ */
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W, H, groundY;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  groundY = H - 130;
+}
+window.addEventListener('resize', () => { resize(); if (typeof seedStars === 'function') seedStars(); });
+resize();
+
+/* ---------------- Live node data (Node Scorecard) ---------- */
+const SCORECARD_URL = 'https://superpios.github.io/node-scorecard/latest.json';
+let nodes = [];
+let dataSource = 'demo';
+
+function fallbackNodes() {
+  const countries = ['Germany','United States','France','Italy','Japan','Brazil','Netherlands','Singapore'];
+  return Array.from({length:120}, (_, i) => ({
+    moniker: 'DemoNode-' + (i+1),
+    dl_mbps: 50 + Math.random()*1500,
+    country: countries[i % countries.length],
+    hosting: Math.random() > 0.25,
+    protocol: Math.random() > 0.5 ? 'wireguard' : 'v2ray'
+  }));
+}
+
+async function loadNodes() {
+  try {
+    const res = await fetch(SCORECARD_URL, {cache:'no-store'});
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const all = await res.json();
+    const active = all.filter(n => n.status === 'active' && (n.dl_mbps || 0) > 8);
+    if (!active.length) throw new Error('no active nodes');
+    nodes = active.slice(0, 500);
+    dataSource = 'live';
+    setNodeStatus('&#9679; LIVE — ' + nodes.length + ' active Sentinel nodes loaded', '#22ff99');
+  } catch (e) {
+    nodes = fallbackNodes();
+    dataSource = 'demo';
+    setNodeStatus('&#9675; Offline — demo node data (Scorecard unreachable)', '#ffaa44');
+  }
+}
+function setNodeStatus(html, color) {
+  const el = document.getElementById('nodeStatus');
+  el.innerHTML = html;
+  el.style.color = color;
+}
+
+/* ---------------- Ecosystem content -------------------------
+   Each TOPIC = 1 info panel + 1 quiz, shown AT MOST ONCE per run.
+   Sources: sentinel.co (official dVPN apps) + Node Scorecard.
+   ------------------------------------------------------------ */
+const TOPICS = [
+  // --- Official dVPN apps built on Sentinel (sentinel.co/#use-dvpn) ---
+  {id:'shield', tag:'dVPN APP', name:'Sentinel Shield',
+   desc:'The flagship open-source dVPN by Sentinel P2P. WireGuard & V2Ray, on Android and iOS.',
+   link:'https://shield.sentinel.co/',
+   quiz:{q:'Sentinel Shield is...', opts:['A closed-source corporate VPN','The flagship OPEN-SOURCE dVPN by Sentinel P2P','A crypto wallet'], correct:1}},
+
+  {id:'independent', tag:'dVPN APP', name:'Independent VPN',
+   desc:'A free decentralized VPN on Sentinel, focused on digital rights and open internet access. WireGuard & V2Ray, Android & iOS.',
+   link:'https://independentdvpn.com/',
+   quiz:{q:'What is Independent VPN focused on?', opts:['Selling user data','Digital rights and free internet access','Mining Bitcoin'], correct:1}},
+
+  {id:'ryn', tag:'dVPN APP', name:'Ryn VPN',
+   desc:'Sentinel-powered privacy VPN with a clean minimalist interface and a user base of over 10 million people.',
+   link:'https://www.rynvpn.com/',
+   quiz:{q:'Ryn VPN runs its bandwidth on...', opts:['Its own private datacenters','The decentralized Sentinel network','A single cloud provider'], correct:1}},
+
+  {id:'norse', tag:'dVPN APP', name:'DVPN by NORSE',
+   desc:'A decentralized VPN wrapped into user-friendly apps for every platform: Android, iOS, macOS, Windows and Linux.',
+   link:'https://norselabs.io/',
+   quiz:{q:'DVPN by NORSE is available on...', opts:['Android only','All major platforms: mobile AND desktop','Smart fridges only'], correct:1}},
+
+  {id:'valt', tag:'dVPN APP', name:'VALT',
+   desc:'VALT lets you capture and protect the data you create every day, with dVPN bandwidth from the Sentinel network.',
+   link:'https://valtdata.com/',
+   quiz:{q:'What does VALT help you do?', opts:['Sell your data to advertisers','Capture and PROTECT the data you create','Delete the internet'], correct:1}},
+
+  {id:'meile', tag:'dVPN APP', name:'Meile dVPN',
+   desc:'Sentinel-powered desktop dVPN client for macOS, Linux and Windows, built by MathNodes.',
+   link:'https://mathnodes.com/index.php/meile-dvpn-client-linux-os-x/',
+   quiz:{q:'Meile dVPN is built primarily for...', opts:['Desktop: macOS, Linux, Windows','Smartwatches','Game consoles'], correct:0}},
+
+  // --- Core network concepts ---
+  {id:'network', tag:'NETWORK', name:'The Sentinel Network',
+   desc:'A Layer-1 decentralized bandwidth marketplace: 1500+ independent node operators across 90+ countries. No company owns the servers, no single jurisdiction governs the network.',
+   link:'https://sentinel.co',
+   quiz:{q:'Why can a dVPN not simply "promise" not to log you?', opts:['Because it does log you','Because no company exists that COULD log your traffic — it is technical, not a promise','Because logs are illegal'], correct:1}},
+
+  {id:'p2p', tag:'TOKEN', name:'$P2P Token',
+   desc:'The token powering the bandwidth marketplace: users pay node operators directly on-chain — no invoices, no middleman. Operators earn $P2P for the bandwidth they share.',
+   link:'https://sentinel.co',
+   quiz:{q:'Who earns $P2P on Sentinel?', opts:['Only the Sentinel team','Node operators who share their bandwidth','Nobody, it is free'], correct:1}},
+
+  {id:'onchain', tag:'PROTOCOL', name:'On-Chain Sessions',
+   desc:'A signed transaction creates an immutable session on the blockchain. The node queries the chain to verify it BEFORE generating VPN credentials. Authorization is cryptographic, not corporate. The blockchain IS the backend.',
+   link:'https://p2pscan.com/transactions',
+   quiz:{q:'What authorizes your VPN session on Sentinel?', opts:['A support ticket','An on-chain transaction verified by the node','An email confirmation'], correct:1}},
+
+  // --- Nodes: residential vs datacenter (the game mechanic!) ---
+  {id:'residential', tag:'NODE TYPE', name:'\u2605 Residential Nodes',
+   desc:'Nodes running on a real home internet line instead of a datacenter. Their IP looks like an ordinary user, so they are far harder to block or fingerprint — the highest privacy tier on the network. In this game they are GOLD and worth x2.4 score.',
+   link:'https://sentinel.co',
+   quiz:{q:'Why is a residential node harder to block?', opts:['It is faster','Its IP looks like a normal home user, not a datacenter','It is invisible'], correct:1}},
+
+  {id:'datacenter', tag:'NODE TYPE', name:'\u26A1 Datacenter Nodes',
+   desc:'Nodes hosted in datacenters (hosting = true on the Scorecard). Huge bandwidth, rock-solid uptime, cheap to scale — but their IP ranges are known and easier for services to block. They are the backbone of raw network capacity.',
+   link:'https://sentinel.co',
+   quiz:{q:'What is the trade-off of a datacenter node?', opts:['Fast and stable, but its IP range is easier to block','It has no bandwidth','It cannot be paid'], correct:0}},
+
+  {id:'hostnode', tag:'EARN', name:'Host Your Own Node',
+   desc:'Anyone can run a Sentinel node on Windows, macOS, Linux — or a Raspberry Pi at home — share bandwidth and earn $P2P. 1500+ operators already do.',
+   link:'https://docs.sentinel.co/dvpn-node-setup',
+   quiz:{q:'What do you need to become a node operator?', opts:['A corporate licence','A machine with bandwidth to share — even a home Pi','Approval from a CEO'], correct:1}},
+
+  // --- Protocols: live + incoming ---
+  {id:'protocols', tag:'PROTOCOLS', name:'WireGuard & V2Ray',
+   desc:'Live today on Sentinel nodes. WireGuard = kernel-fast Curve25519 tunnels. V2Ray (VMess/VLESS) = anti-censorship, disguises traffic where WireGuard gets blocked. Keys never leave your device.',
+   link:'https://sentinel.co',
+   quiz:{q:'When do you reach for V2Ray instead of WireGuard?', opts:['When you want maximum raw speed','When WireGuard is blocked and you need anti-censorship','Never, they are identical'], correct:1}},
+
+  {id:'nextproto', tag:'ROADMAP', name:'\u{1F6E0} Incoming Protocols',
+   desc:'The next anti-censorship wave being built on top of the Sentinel stack: Xray (advanced VLESS/XTLS), Hysteria2 (fast UDP, thrives on lossy networks) and AmneziaWG (WireGuard with an obfuscated handshake that DPI cannot fingerprint).',
+   link:'https://sentinel.co',
+   quiz:{q:'What do Xray, Hysteria2 and AmneziaWG have in common?', opts:['They are all crypto tokens','They are protocols designed to defeat censorship / DPI','They are node operators'], correct:1}},
+
+  // --- Agents / x402 ---
+  {id:'x402', tag:'AI AGENTS', name:'\u{1F916} dVPN for AI Agents (x402)',
+   desc:'The first dVPN an AI agent can buy by itself: it calls the endpoint, gets a price, signs a USDC payment on Base or Solana, and the tunnel comes up. No API keys, no accounts, no human. A full day costs about $0.033.',
+   link:'https://x402.sentinel.co/',
+   quiz:{q:'How does an AI agent pay for Sentinel bandwidth?', opts:['It emails an invoice','It autonomously signs a USDC payment via x402','It asks its owner for a credit card'], correct:1}},
+
+  // --- More dVPN clients & apps ---
+  {id:'chiba', tag:'dVPN APP', name:'ChibaTunnel',
+   desc:'A cyberpunk-inspired, open-source dVPN client powered by the Sentinel protocol. Trustless, no-log, multi-platform — privacy guaranteed by cryptography, not promises.',
+   link:'https://chibatunnel.xyz/',
+   quiz:{q:'ChibaTunnel guarantees privacy through...', opts:['A legal no-log promise','Cryptography and an open-source, trustless design','Insurance'], correct:1}},
+
+
+
+
+  {id:'bluecli', tag:'BUILDERS', name:'⌨ BlueCLI',
+   desc:'An interactive, self-contained command-line client for the Sentinel dVPN network, built by Bitveil — the same crew behind Bluefrens. Connect from a terminal, a server or a homelab: no GUI, no bloat.',
+   link:'https://github.com/Bitveil/bluecli',
+   quiz:{q:'What is BlueCLI?', opts:['An NFT collection','A self-contained command-line dVPN client for Sentinel','A hardware router'], correct:1}},
+
+  // --- Explorers & network tools ---
+  {id:'p2pscan', tag:'EXPLORER', name:'\u{1F50E} P2PScan',
+   desc:'The Sentinel block explorer. Every session, payment and node registration is a public transaction you can look up yourself. Nothing hidden behind a company dashboard — verify, do not trust.',
+   link:'https://p2pscan.com/',
+   quiz:{q:'What can you check on P2PScan?', opts:['Nothing, it is private','Every on-chain session, payment and validator — publicly verifiable','Only the team wallet'], correct:1}},
+
+  {id:'suchnode', tag:'EXPLORER', name:'\u{1F5FA} SuchNode',
+   desc:'A community-built node explorer and live map of the network: browse every dVPN node worldwide with its country, protocol, speed and price.',
+   link:'https://nodes.suchnode.net/',
+   quiz:{q:'What does SuchNode let you browse?', opts:['Every dVPN node on the network, worldwide','Only nodes in one country','Cat pictures'], correct:0}},
+
+  {id:'stats', tag:'DATA', name:'\u{1F4C8} Network Stats',
+   desc:'The official live dashboard: active nodes, sessions, users and total bandwidth served across the network — more than 6 petabytes so far.',
+   link:'https://stats.sentinel.co/',
+   quiz:{q:'Roughly how much data has the Sentinel network served?', opts:['A few megabytes','Over 6 petabytes','Exactly one gigabyte'], correct:1}},
+
+  // --- Community & culture ---
+  {id:'bluefrens', tag:'COMMUNITY', name:'\u{1F438} Bluefrens',
+   desc:'1,420 pixel-art NFTs on Stargaze, built by Bitveil — a tribute to the whole Sentinel ecosystem, with traits nodding to the dVPN apps and contributors. A friendly face on peer-to-peer tech.',
+   link:'https://bluefrens.xyz/',
+   quiz:{q:'What are Bluefrens?', opts:['A new VPN protocol','A pixel-art NFT collection celebrating the Sentinel community','A datacenter'], correct:1}},
+
+
+  // --- The data behind this game ---
+  {id:'scorecard', tag:'DATA', name:'\u{1F4CA} Node Scorecard',
+   desc:'The open dashboard tracking speed, uptime, protocol and reliability of every Sentinel node — and the exact LIVE data powering the nodes you are collecting in this run.',
+   link:'https://superpios.github.io/node-scorecard/',
+   quiz:{q:'The \u26A1 nodes you collect in this game are...', opts:['Randomly invented','Real Sentinel nodes, live from Node Scorecard','Old screenshots'], correct:1}}
+];
+
+// Progress: each topic shows its panel + quiz AT MOST ONCE per run.
+let seenTopics = new Set();      // info panel already shown
+let quizzedTopics = new Set();   // quiz already answered
+function remainingTopics() { return TOPICS.filter(t => !seenTopics.has(t.id)); }
+
+/* ---------------- Audio (WebAudio synth, zero deps) -------- */
+let audioCtx = null, muted = false, musicTimer = null, musicStep = 0;
+function ac() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function beep(freq, dur, type, vol) {
+  if (muted) return;
+  try {
+    const a = ac(), o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || 0.06, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime + dur);
+  } catch (e) {}
+}
+const MELODY = [220, 277, 330, 277, 220, 330, 392, 330, 220, 277, 330, 440, 392, 330, 277, 220];
+function startMusic() {
+  stopMusic();
+  musicTimer = setInterval(() => {
+    if (state !== 'running' || muted) return;
+    beep(MELODY[musicStep % MELODY.length], 0.14, 'triangle', 0.035);
+    if (musicStep % 4 === 0) beep(MELODY[musicStep % MELODY.length] / 2, 0.2, 'sine', 0.045);
+    musicStep++;
+  }, 190);
+}
+function stopMusic() { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } }
+
+/* ---------------- Game state ------------------------------- */
+const MAX_LIVES = 12, START_LIVES = 10, BASE_SPEED = 3.4, MAX_SPEED = 7.2;
+let state = 'menu'; // menu | running | paused | info | quiz | over
+let lives, score, speed, streak, distance, level, jumpsLeft, bgTheme;
+let obstacles, powerups, specials, particles, floaters;
+let resiCount = 0, dcCount = 0;
+let lastSpawn = 0, lastRegen = 0, rafId = null;
+
+let highScore = 0;
+try { highScore = parseFloat(localStorage.getItem('sentinelHigh')) || 0; } catch (e) {}
+document.getElementById('best').textContent = Math.floor(highScore);
+
+const themes = [
+  {bg:'#05081c', bg2:'#0d1638', ground:'#0a1024'},   // deep chain blue
+  {bg:'#100722', bg2:'#241041', ground:'#160c2c'},   // violet
+  {bg:'#04160f', bg2:'#0a2b20', ground:'#08201a'},   // emerald
+  {bg:'#1a0d05', bg2:'#33200c', ground:'#22150a'}    // amber
+];
+
+const player = {x: 170, y: 0, vy: 0, w: 62, h: 58};
+
+class Entity {
+  constructor(kind) { // 'obstacle' | 'power' | 'special'
+    this.kind = kind;
+    this.x = W + 120 + Math.random() * 240;
+    this.baseY = groundY - 55 - Math.random() * 240;
+    this.y = this.baseY;
+    this.size = 46;
+    this.wobble = Math.random() * Math.PI * 2;
+    this.node = nodes.length ? nodes[Math.floor(Math.random() * nodes.length)] : {};
+    this.brick = Math.floor(Math.random() * 6);
+  }
+}
+
+class Particle {
+  constructor(x, y, color) {
+    this.x = x; this.y = y;
+    this.vx = Math.random() * 10 - 5;
+    this.vy = Math.random() * 8 - 11;
+    this.life = 34;
+    this.color = color;
+  }
+  update() { this.x += this.vx; this.y += this.vy; this.vy += 0.35; this.life--; }
+  draw() {
+    ctx.globalAlpha = Math.max(this.life / 34, 0);
+    ctx.fillStyle = this.color;
+    ctx.fillRect(this.x - 4, this.y - 4, 8, 8);
+    ctx.globalAlpha = 1;
+  }
+}
+
+class Floater { // floating text (node moniker etc.)
+  constructor(x, y, text, color) {
+    this.x = x; this.y = y; this.text = text; this.color = color; this.life = 80;
+  }
+  update() { this.y -= 0.9; this.life--; }
+  draw() {
+    ctx.globalAlpha = Math.min(1, this.life / 40);
+    ctx.fillStyle = this.color;
+    ctx.font = 'bold 15px monospace';
+    ctx.fillText(this.text, this.x, this.y);
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ---------------- Core flow -------------------------------- */
+function resetGame() {
+  lives = START_LIVES; score = 0; speed = BASE_SPEED; streak = 0;
+  distance = 0; level = 0; jumpsLeft = 2; bgTheme = 0;
+  obstacles = []; powerups = []; specials = []; particles = []; floaters = [];
+  lastSpawn = Date.now(); lastRegen = 0;
+  seenTopics = new Set(); quizzedTopics = new Set(); currentTopic = null;
+  resiCount = 0; dcCount = 0;
+  player.y = groundY - player.h; player.vy = 0;
+}
+
+function startGame() {
+  hide('menu'); hide('gameover'); hide('pausePanel');
+  ac(); // unlock audio on user gesture
+  resetGame();
+  state = 'running';
+  startMusic();
+}
+
+function endGame() {
+  state = 'over';
+  hide('pausePanel');
+  stopMusic();
+  beep(140, 0.5, 'sawtooth', 0.08);
+  if (score > highScore) {
+    highScore = score;
+    try { localStorage.setItem('sentinelHigh', String(highScore)); } catch (e) {}
+  }
+  document.getElementById('best').textContent = Math.floor(highScore);
+  const mastered = seenTopics.size === TOPICS.length;
+  document.getElementById('finalScore').innerHTML =
+    'Score: <b>' + Math.floor(score) + '</b><br>' +
+    'Nodes collected: <b>' + streak + '</b> ' +
+    '(\u2605 ' + resiCount + ' residential \u00B7 \u26A1 ' + dcCount + ' datacenter)<br>' +
+    'Ecosystem discovered: <b>' + seenTopics.size + '/' + TOPICS.length + '</b>' +
+    (mastered ? ' \u{1F3C6} MASTERED!' : '') + '<br>' +
+    'Quizzes answered: <b>' + quizzedTopics.size + '</b><br>' +
+    'High score: <b>' + Math.floor(highScore) + '</b>' +
+    (dataSource === 'live' ? '<br><span class="small">powered by live Sentinel node data</span>' : '');
+  show('gameover');
+}
+
+function togglePause() {
+  if (state === 'running') {
+    state = 'paused';
+    document.getElementById('pauseStats').textContent =
+      'Score ' + Math.floor(score) + '  \u00b7  $P2P ' + lives +
+      '  \u00b7  Nodes ' + streak + '  \u00b7  Ecosystem ' + seenTopics.size + '/' + TOPICS.length;
+    show('pausePanel');
+  } else if (state === 'paused') {
+    hide('pausePanel');
+    state = 'running';
+  }
+}
+
+// Leave any state (running, paused, info, quiz, game over) and go back to the menu.
+function goToMenu() {
+  ['pausePanel', 'gameover', 'infoPanel', 'quizPanel'].forEach(hide);
+  state = 'menu';
+  stopMusic();
+  resetGame();
+  show('menu');
+}
+
+// Restart immediately from anywhere.
+function restartRun() {
+  ['pausePanel', 'gameover', 'infoPanel', 'quizPanel'].forEach(hide);
+  startGame();
+}
+
+function show(id) { document.getElementById(id).style.display = 'block'; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+/* ---------------- Input ------------------------------------ */
+function jump() {
+  if (state !== 'running' || jumpsLeft <= 0) return;
+  player.vy = -19;
+  jumpsLeft--;
+  beep(jumpsLeft === 1 ? 520 : 660, 0.12, 'square', 0.05);
+  for (let i = 0; i < 12; i++) particles.push(new Particle(player.x + 20, player.y + player.h, '#00e5ff'));
+}
+
+canvas.addEventListener('pointerdown', jump);
+document.addEventListener('keydown', e => {
+  const k = e.key;
+  if ([' ', 'ArrowUp', 'w', 'W'].includes(k)) { e.preventDefault(); jump(); }
+  if (k === 'p' || k === 'P' || k === 'Escape') {
+    if (state === 'running' || state === 'paused') togglePause();
+  }
+  // R / M work while paused or on the game-over screen
+  if ((k === 'r' || k === 'R') && (state === 'paused' || state === 'over')) restartRun();
+  if ((k === 'm' || k === 'M') && (state === 'paused' || state === 'over')) goToMenu();
+  if ((k === 'Enter' || k === ' ') && state === 'menu') startGame();
+});
+
+/* ---------------- Ecosystem discovery (once per topic) -------
+   A star only interrupts the run if there is a NEW topic left.
+   Once every topic has been seen, stars become pure bonus:
+   no panel, no pause, just points. No repeated interruptions.
+   ------------------------------------------------------------ */
+let currentTopic = null;
+
+function collectStar(x, y) {
+  const left = remainingTopics();
+  if (left.length === 0) {
+    // Ecosystem fully explored -> silent bonus, game never pauses again
+    score += 1000;
+    lives = Math.min(MAX_LIVES, lives + 1);
+    floaters.push(new Floater(x - 70, y - 20, '\u2605 ECOSYSTEM MASTERED  +1000', '#ffd54a'));
+    beep(1200, 0.18, 'triangle', 0.06);
+    return;
+  }
+  currentTopic = left[Math.floor(Math.random() * left.length)];
+  seenTopics.add(currentTopic.id);
+  state = 'info';
+  document.getElementById('dappTag').textContent = currentTopic.tag;
+  document.getElementById('dappTitle').textContent = currentTopic.name;
+  document.getElementById('dappDesc').textContent = currentTopic.desc;
+  document.getElementById('dappLink').href = currentTopic.link;
+  document.getElementById('topicProgress').textContent =
+    'Ecosystem discovered: ' + seenTopics.size + '/' + TOPICS.length;
+  // quiz button only if this topic's quiz hasn't been answered yet
+  const qb = document.getElementById('quizBtn');
+  qb.style.display = quizzedTopics.has(currentTopic.id) ? 'none' : 'inline-block';
+  lives = Math.min(MAX_LIVES, lives + 1);
+  score += 600;
+  beep(880, 0.25, 'triangle', 0.07);
+  show('infoPanel');
+}
+
+function closeInfo() { hide('infoPanel'); state = 'running'; }
+
+function openQuiz() {
+  if (!currentTopic || quizzedTopics.has(currentTopic.id)) { closeInfo(); return; }
+  hide('infoPanel');
+  state = 'quiz';
+  quizzedTopics.add(currentTopic.id); // one quiz per topic, no matter the outcome
+  const q = currentTopic.quiz;
+  document.getElementById('quizTag').textContent = currentTopic.name;
+  document.getElementById('quizQ').textContent = q.q;
+  document.getElementById('quizResult').textContent = '';
+  const box = document.getElementById('quizOpts');
+  box.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const b = document.createElement('button');
+    b.className = 'quizOpt';
+    b.textContent = String.fromCharCode(65 + i) + ') ' + opt;
+    b.addEventListener('click', () => answerQuiz(i));
+    box.appendChild(b);
+  });
+  show('quizPanel');
+}
+
+function answerQuiz(i) {
+  const q = currentTopic.quiz;
+  const res = document.getElementById('quizResult');
+  document.querySelectorAll('#quizOpts button').forEach(b => { b.disabled = true; });
+  if (i === q.correct) {
+    lives = Math.min(MAX_LIVES, lives + 3);
+    score += 1500;
+    res.style.color = '#22ff99';
+    res.textContent = '\u2705 Correct! +3 $P2P, +1500 score';
+    beep(1040, 0.3, 'triangle', 0.08);
+  } else {
+    res.style.color = '#ff3366';
+    res.textContent = '\u274C The answer was: ' + q.opts[q.correct];
+    beep(180, 0.3, 'sawtooth', 0.07);
+  }
+  setTimeout(() => { hide('quizPanel'); state = 'running'; }, 1800);
+}
+
+/* ---------------- Spawning & update ------------------------- */
+function checkCollision(a, b) {
+  return Math.abs((a.x + 15) - b.x) < 52 && Math.abs((a.y + 25) - b.y) < 52;
+}
+
+function spawn() {
+  const interval = 520 / (speed / BASE_SPEED);
+  if (Date.now() - lastSpawn < interval) return;
+  lastSpawn = Date.now();
+  const r = Math.random();
+  if (r < 0.46) obstacles.push(new Entity('obstacle'));
+  else if (r < 0.82) powerups.push(new Entity('power'));
+  else specials.push(new Entity('special'));
+}
+
+function update() {
+  if (state !== 'running') return;
+  distance += speed;
+  score += speed * 1.5;
+
+  // physics
+  player.vy += 1.0;
+  player.y += player.vy;
+  if (player.y >= groundY - player.h) {
+    player.y = groundY - player.h;
+    player.vy = 0;
+    jumpsLeft = 2;
+  }
+
+  spawn();
+
+  // level up every 15000 points: theme change + gentle speed ramp
+  if (Math.floor(score / 15000) > level) {
+    level++;
+    bgTheme = (bgTheme + 1) % themes.length;
+    speed = Math.min(MAX_SPEED, speed + 0.35);
+    floaters.push(new Floater(W / 2 - 60, H / 2 - 60, 'LEVEL ' + (level + 1), '#00e5ff'));
+    beep(700, 0.2, 'triangle', 0.06);
+  }
+
+  // slow $P2P regen: +1 every 9000 score
+  if (Math.floor(score / 9000) > lastRegen) {
+    lastRegen = Math.floor(score / 9000);
+    if (lives < START_LIVES) {
+      lives++;
+      floaters.push(new Floater(player.x, player.y - 20, '+1 $P2P (regen)', '#22ff99'));
+    }
+  }
+
+  // obstacles (trackers / censorship)
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const o = obstacles[i];
+    o.x -= speed * 6.5;
+    o.wobble += 0.12;
+    o.y = o.baseY + Math.sin(o.wobble) * 7;
+    if (o.x < -100) { obstacles.splice(i, 1); continue; }
+    if (checkCollision(player, o)) {
+      lives--;
+      speed = Math.max(BASE_SPEED, speed - 0.4);
+      floaters.push(new Floater(o.x - 30, o.y - 30, '-1 $P2P  tracker hit!', '#ff3366'));
+      for (let k = 0; k < 18; k++) particles.push(new Particle(o.x, o.y, '#ff3366'));
+      beep(160, 0.25, 'sawtooth', 0.08);
+      obstacles.splice(i, 1);
+      if (lives <= 0) { endGame(); return; }
+    }
+  }
+
+  // node powerups (real Scorecard nodes)
+  for (let i = powerups.length - 1; i >= 0; i--) {
+    const p = powerups[i];
+    p.x -= speed * 6.5;
+    p.wobble += 0.2;
+    p.y = p.baseY + Math.sin(p.wobble) * 12;
+    if (p.x < -100) { powerups.splice(i, 1); continue; }
+    if (checkCollision(player, p)) {
+      const n = p.node || {};
+      const mbps = Math.round(n.dl_mbps || 300);
+      const residential = n.hosting === false;   // Scorecard: hosting=false -> home connection
+      const gain = Math.floor(mbps * (residential ? 2.4 : 1.2));
+      score += gain;
+      streak++;
+      if (residential) resiCount++; else dcCount++;
+      speed = Math.min(MAX_SPEED, speed + 0.3);
+      const proto = (n.protocol || '').toUpperCase();
+      const label = (n.moniker || 'node')
+        + (n.country ? ' \u00B7 ' + n.country : '')
+        + ' \u00B7 ' + mbps + ' Mbps'
+        + (proto ? ' \u00B7 ' + proto : '');
+      const tier = residential ? '\u2605 RESIDENTIAL  x2.4' : '\u26A1 DATACENTER  x1.2';
+      const col = residential ? '#ffd54a' : '#22ff99';
+      floaters.push(new Floater(p.x - 70, p.y - 42, label, col));
+      floaters.push(new Floater(p.x - 40, p.y - 24, tier, col));
+      floaters.push(new Floater(p.x, p.y - 4, '+' + gain, col));
+      for (let k = 0; k < 26; k++) particles.push(new Particle(p.x, p.y, col));
+      beep(residential ? 990 : 780, 0.15, 'square', 0.06);
+      powerups.splice(i, 1);
+    }
+  }
+
+  // special stars (dApp discovery)
+  for (let i = specials.length - 1; i >= 0; i--) {
+    const s = specials[i];
+    s.x -= speed * 6.5;
+    s.wobble += 0.18;
+    s.y = s.baseY + Math.sin(s.wobble) * 12;
+    if (s.x < -100) { specials.splice(i, 1); continue; }
+    if (checkCollision(player, s)) {
+      for (let k = 0; k < 32; k++) particles.push(new Particle(s.x, s.y, '#ffd54a'));
+      const sx = s.x, sy = s.y;
+      specials.splice(i, 1);
+      collectStar(sx, sy);
+      break;
+    }
+  }
+
+  particles.forEach(p => p.update());
+  particles = particles.filter(p => p.life > 0);
+  floaters.forEach(f => f.update());
+  floaters = floaters.filter(f => f.life > 0);
+}
+
+/* ---------------- Rendering ---------------------------------
+   NOTE ON BRANDING: every glyph below is ORIGINAL vector art drawn
+   with canvas paths — a shield/packet emblem inspired by the dVPN
+   theme. No third-party logo or trademark file is embedded or traced.
+   Sentinel brand blue (#0156FC) is used as an accent colour only.
+   ------------------------------------------------------------ */
+const BRAND_BLUE = '#0156fc';
+
+/* --- Original emblem: hex shield + P2P chevron (the player) --- */
+function drawShieldEmblem(x, y, r, glow, g) {
+  const c = g || ctx;
+  c.save();
+  c.translate(x, y);
+  // hex shield body
+  c.shadowBlur = glow ? 26 : 0;
+  c.shadowColor = '#00e5ff';
+  c.beginPath();
+  c.moveTo(0, -r);
+  c.lineTo(r * 0.87, -r * 0.5);
+  c.lineTo(r * 0.87, r * 0.34);
+  c.lineTo(0, r);
+  c.lineTo(-r * 0.87, r * 0.34);
+  c.lineTo(-r * 0.87, -r * 0.5);
+  c.closePath();
+  const grad = c.createLinearGradient(0, -r, 0, r);
+  grad.addColorStop(0, '#2ee9ff');
+  grad.addColorStop(1, BRAND_BLUE);
+  c.fillStyle = grad;
+  c.fill();
+  c.shadowBlur = 0;
+  c.strokeStyle = '#bff6ff';
+  c.lineWidth = 2;
+  c.stroke();
+  // inner peer-to-peer chevron (two arrows meeting = P2P routing)
+  c.strokeStyle = '#eafcff';
+  c.lineWidth = Math.max(2, r * 0.16);
+  c.lineCap = 'round';
+  c.beginPath();
+  c.moveTo(-r * 0.42, -r * 0.10);
+  c.lineTo(0, -r * 0.46);
+  c.lineTo(r * 0.42, -r * 0.10);
+  c.stroke();
+  c.beginPath();
+  c.moveTo(-r * 0.42, r * 0.42);
+  c.lineTo(0, r * 0.06);
+  c.lineTo(r * 0.42, r * 0.42);
+  c.stroke();
+  c.restore();
+}
+
+/* --- Original $P2P coin glyph --- */
+function drawCoinEmblem(x, y, r, glow, g) {
+  const c = g || ctx;
+  c.save();
+  c.translate(x, y);
+  c.shadowBlur = glow ? 26 : 0;
+  c.shadowColor = '#ffd54a';
+  c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2);
+  const grd = c.createLinearGradient(-r, -r, r, r);
+  grd.addColorStop(0, '#fff0b8'); grd.addColorStop(1, '#e8a900');
+  c.fillStyle = grd; c.fill();
+  c.shadowBlur = 0;
+  c.strokeStyle = '#fff8dd'; c.lineWidth = 2; c.stroke();
+  c.fillStyle = '#3a2500';
+  c.font = 'bold ' + Math.round(r * 0.78) + 'px monospace';
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('P2P', 0, 1);
+  c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+  c.restore();
+}
+
+/* --- Original data-packet glyph --- */
+function drawPacketEmblem(x, y, r, glow, g) {
+  const c = g || ctx;
+  c.save();
+  c.translate(x, y);
+  c.shadowBlur = glow ? 24 : 0;
+  c.shadowColor = '#00e5ff';
+  c.fillStyle = '#00b8e0';
+  c.beginPath();
+  c.moveTo(-r, -r * 0.66); c.lineTo(r * 0.62, -r * 0.66);
+  c.lineTo(r, 0); c.lineTo(r * 0.62, r * 0.66); c.lineTo(-r, r * 0.66);
+  c.closePath(); c.fill();
+  c.shadowBlur = 0;
+  c.strokeStyle = '#bff6ff'; c.lineWidth = 2; c.stroke();
+  // encrypted payload bars
+  c.fillStyle = '#eafcff';
+  for (let i = 0; i < 3; i++) c.fillRect(-r * 0.72, -r * 0.4 + i * r * 0.35, r * 0.9, r * 0.16);
+  c.restore();
+}
+
+const SKINS = [
+  {id:0, name:'Data Packet',  draw:drawPacketEmblem},
+  {id:1, name:'dVPN Shield',  draw:drawShieldEmblem},
+  {id:2, name:'$P2P Coin',    draw:drawCoinEmblem}
+];
+let skin = 1;
+
+/* --- Background layer 1: node constellation (uses REAL node data) --- */
+let stars = [];
+function seedStars() {
+  stars = Array.from({length: 70}, () => ({
+    x: Math.random() * (W + 200),
+    y: Math.random() * (groundY - 40),
+    r: Math.random() * 1.8 + 0.6,
+    d: 0.25 + Math.random() * 0.7,       // parallax depth
+    tw: Math.random() * Math.PI * 2      // twinkle phase
+  }));
+}
+seedStars();
+
+function drawNodeField() {
+  // node dots + mesh links, drifting -> looks like the live Sentinel mesh
+  const t = distance;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < stars.length; i++) {
+    const s = stars[i];
+    let x = s.x - (t * s.d * 0.35) % (W + 200);
+    if (x < -60) x += W + 200;
+    const tw = 0.4 + 0.6 * Math.abs(Math.sin(s.tw + t * 0.004));
+    ctx.globalAlpha = 0.18 + 0.5 * tw * s.d;
+    ctx.fillStyle = i % 7 === 0 ? BRAND_BLUE : '#7fe9ff';
+    ctx.beginPath(); ctx.arc(x, s.y, s.r + (i % 7 === 0 ? 1.2 : 0), 0, Math.PI * 2); ctx.fill();
+    // link to next dot if close (mesh effect)
+    const n = stars[(i + 1) % stars.length];
+    let nx = n.x - (t * n.d * 0.35) % (W + 200);
+    if (nx < -60) nx += W + 200;
+    const dx = nx - x, dy = n.y - s.y;
+    if (dx * dx + dy * dy < 34000) {
+      ctx.globalAlpha = 0.09 * tw;
+      ctx.strokeStyle = '#4fd8ff';
+      ctx.beginPath(); ctx.moveTo(x, s.y); ctx.lineTo(nx, n.y); ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* --- Background layer 2: server-rack skyline (the 1500+ operators) --- */
+const racks = Array.from({length: 26}, (_, i) => ({
+  w: 46 + (i * 37) % 60,
+  h: 60 + (i * 53) % 150,
+  gap: 30 + (i * 17) % 50
+}));
+function drawRackSkyline() {
+  const scroll = (distance * 0.55) % 3000;
+  let x = -scroll;
+  ctx.save();
+  for (let pass = 0; pass < 3 && x < W; pass++) {
+    for (let i = 0; i < racks.length && x < W + 100; i++) {
+      const r = racks[i];
+      const top = groundY - r.h;
+      if (x + r.w > -60) {
+        ctx.globalAlpha = 0.42;
+        ctx.fillStyle = '#0e1730';
+        ctx.fillRect(x, top, r.w, r.h);
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = 'rgba(0,229,255,0.22)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, top + 0.5, r.w - 1, r.h - 1);
+        // blinking rack LEDs = active nodes
+        for (let u = top + 8; u < groundY - 6; u += 11) {
+          const on = ((Math.floor(distance / 12) + u + i) % 5) < 2;
+          ctx.globalAlpha = on ? 0.75 : 0.18;
+          ctx.fillStyle = on ? '#22ff99' : '#1a5f6b';
+          ctx.fillRect(x + 6, u, 5, 3);
+          ctx.fillStyle = on ? '#00e5ff' : '#1a5f6b';
+          ctx.fillRect(x + 14, u, 3, 3);
+        }
+      }
+      x += r.w + r.gap;
+    }
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+/* --- Background layer 3: routing arcs (parallax) --- */
+function drawRoutingArcs() {
+  const offset = (distance * 1.6) % 160;
+  ctx.strokeStyle = 'rgba(1,86,252,0.20)';
+  ctx.lineWidth = 2.5;
+  for (let i = -1; i < 11; i++) {
+    const x = (i * 130 - offset) % (W + 400) - 150;
+    ctx.beginPath();
+    ctx.moveTo(x, 60);
+    ctx.quadraticCurveTo(x + 90, H / 2 - 40, x + 190, groundY);
+    ctx.stroke();
+  }
+}
+
+/* --- Ground: the chain. Each tile is a block with a height number. --- */
+function drawGround() {
+  const t = themes[bgTheme];
+  ctx.fillStyle = t.ground;
+  ctx.fillRect(0, groundY, W, H - groundY);
+  // top rail
+  ctx.fillStyle = 'rgba(0,229,255,0.9)';
+  ctx.fillRect(0, groundY - 3, W, 3);
+  // ledger blocks scrolling: "the blockchain IS the backend"
+  const TW = 132;
+  const scroll = (distance * 6.5) % TW;
+  const first = Math.floor(distance * 6.5 / TW);
+  for (let i = -1; i * TW - scroll < W + TW; i++) {
+    const x = i * TW - scroll;
+    const height = 29538767 + first + i;    // running block height, cosmetic
+    ctx.strokeStyle = 'rgba(0,229,255,0.35)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 6, groundY + 12, TW - 12, 44);
+    // chain link between blocks
+    ctx.beginPath();
+    ctx.moveTo(x + TW - 6, groundY + 34);
+    ctx.lineTo(x + TW + 6, groundY + 34);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(1,86,252,0.20)';
+    ctx.fillRect(x + 6, groundY + 12, TW - 12, 44);
+    ctx.fillStyle = 'rgba(127,232,255,0.75)';
+    ctx.font = '11px monospace';
+    ctx.fillText('#' + height, x + 14, groundY + 30);
+    ctx.fillStyle = 'rgba(34,255,153,0.55)';
+    ctx.fillText('\u2713 signed', x + 14, groundY + 47);
+  }
+}
+
+function drawBackground() {
+  const t = themes[bgTheme];
+  const g = ctx.createLinearGradient(0, 0, 0, groundY);
+  g.addColorStop(0, t.bg);
+  g.addColorStop(1, t.bg2);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  drawNodeField();
+  drawRoutingArcs();
+  drawRackSkyline();
+  drawGround();
+  ctx.shadowBlur = 0;
+}
+
+/* --- Player --- */
+function drawPlayer() {
+  const cx = player.x + player.w / 2, cy = player.y + player.h / 2;
+  // motion trail
+  for (let i = 3; i >= 1; i--) {
+    ctx.globalAlpha = 0.10 * i;
+    SKINS[skin].draw(cx - i * 13, cy + i * 1.5, 24 - i * 2, false);
+  }
+  ctx.globalAlpha = 1;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(Math.min(Math.max(player.vy * 0.026, -0.42), 0.48));
+  SKINS[skin].draw(0, 0, 26, true);
+  ctx.restore();
+}
+
+/* --- Obstacles: censorship bricks, each labelled --- */
+const BLOCKS = [
+  {t:'DPI',    ic:'\u{1F50D}'},
+  {t:'TRACKER',ic:'\u{1F441}'},
+  {t:'ISP LOG',ic:'\u{1F4DD}'},
+  {t:'GEOBLOCK',ic:'\u{1F6AB}'},
+  {t:'THROTTLE',ic:'\u{1F40C}'},
+  {t:'CENSOR', ic:'\u2702'}
+];
+
+function drawBrick(o) {
+  const b = BLOCKS[o.brick % BLOCKS.length];
+  const s = 54;
+  ctx.save();
+  ctx.translate(o.x, o.y);
+  ctx.shadowBlur = 26; ctx.shadowColor = '#ff3366';
+  // brick body with mortar lines
+  ctx.fillStyle = '#8e1030';
+  ctx.fillRect(-s / 2, -s / 2, s, s);
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#ff5c85'; ctx.lineWidth = 2;
+  ctx.strokeRect(-s / 2, -s / 2, s, s);
+  ctx.strokeStyle = 'rgba(255,120,150,0.35)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-s / 2, -s / 6); ctx.lineTo(s / 2, -s / 6);
+  ctx.moveTo(-s / 2, s / 6);  ctx.lineTo(s / 2, s / 6);
+  ctx.moveTo(0, -s / 2); ctx.lineTo(0, -s / 6);
+  ctx.moveTo(0, s / 6);  ctx.lineTo(0, s / 2);
+  ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.font = '18px monospace';
+  ctx.fillText(b.ic, 0, -4);
+  ctx.fillStyle = '#ffd7e0';
+  ctx.font = 'bold 9px monospace';
+  ctx.fillText(b.t, 0, 18);
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+/* --- Node orbs (real Scorecard nodes) --- */
+function drawNodeOrb(p) {
+  const residential = p.node && p.node.hosting === false;
+  const col = residential ? '#ffd54a' : '#22ff99';
+  const pulse = 1 + Math.sin(p.wobble * 1.6) * 0.06;
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.scale(pulse, pulse);
+  ctx.shadowBlur = 40; ctx.shadowColor = col;
+  const g = ctx.createRadialGradient(0, -6, 3, 0, 0, 26);
+  g.addColorStop(0, residential ? '#fff2c0' : '#c6ffe6');
+  g.addColorStop(1, col);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+  if (residential) { // gold ring = top privacy tier
+    ctx.strokeStyle = '#fff3c4'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(0, 0, 31, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,213,74,0.35)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, 36 + Math.sin(p.wobble) * 2, 0, Math.PI * 2); ctx.stroke();
+  }
+  // bandwidth bolt
+  ctx.fillStyle = '#00141f';
+  ctx.beginPath();
+  ctx.moveTo(3, -13); ctx.lineTo(-6, 1); ctx.lineTo(0, 1);
+  ctx.lineTo(-3, 13); ctx.lineTo(7, -2); ctx.lineTo(1, -2);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // labels under the orb: protocol + country
+  const pr = (p.node && p.node.protocol) || '';
+  const cc = (p.node && p.node.country) || '';
+  ctx.textAlign = 'center';
+  if (pr) {
+    const tag = pr === 'wireguard' ? 'WG' : (pr === 'v2ray' ? 'V2RAY' : pr.slice(0, 5).toUpperCase());
+    ctx.fillStyle = residential ? '#ffe89a' : '#a8ffd8';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText(tag, p.x, p.y + 44);
+  }
+  if (cc) {
+    ctx.fillStyle = 'rgba(200,240,255,0.6)';
+    ctx.font = '10px monospace';
+    ctx.fillText(cc.length > 14 ? cc.slice(0, 13) + '\u2026' : cc, p.x, p.y + 56);
+  }
+  ctx.textAlign = 'left';
+}
+
+/* --- Ecosystem stars --- */
+function drawStar(s) {
+  const mastered = seenTopics.size === TOPICS.length;
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.rotate(s.wobble * 0.5);
+  ctx.shadowBlur = 45; ctx.shadowColor = '#ffd54a';
+  ctx.fillStyle = mastered ? '#c7a2ff' : '#ffdd00';
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const rr = i % 2 === 0 ? 26 : 11;
+    const a = (Math.PI / 5) * i - Math.PI / 2;
+    i === 0 ? ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr)
+            : ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+  if (!mastered) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,213,74,0.85)';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText('ECOSYSTEM', s.x, s.y + 42);
+    ctx.textAlign = 'left';
+  }
+}
+
+function drawEntities() {
+  obstacles.forEach(drawBrick);
+  powerups.forEach(drawNodeOrb);
+  specials.forEach(drawStar);
+}
+
+function drawPaused() {
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(0, 0, W, H);
+}
+
+function updateHUD() {
+  document.getElementById('score').textContent = Math.floor(score);
+  document.getElementById('lives').textContent = lives;
+  document.getElementById('speed').textContent = (speed / BASE_SPEED).toFixed(1);
+  document.getElementById('streak').textContent = streak;
+  document.getElementById('eco').textContent = seenTopics.size;
+  document.getElementById('resi').textContent = resiCount;
+  document.getElementById('dc').textContent = dcCount;
+}
+
+function gameLoop() {
+  update();
+  if (state === 'menu') distance += 1.2;
+  drawBackground();
+  if (state !== 'menu') {
+    drawEntities();
+    drawPlayer();
+    particles.forEach(p => p.draw());
+    floaters.forEach(f => f.draw());
+    updateHUD();
+  }
+  if (state === 'paused') drawPaused();
+  rafId = requestAnimationFrame(gameLoop);
+}
+
+/* ---------------- Wiring ------------------------------------ */
+// skin picker: render each emblem into its own preview canvas
+function renderSkinPreviews() {
+  document.querySelectorAll('#skinPicker .skin').forEach(div => {
+    const id = parseInt(div.getAttribute('data-skin'), 10);
+    const cv = div.querySelector('canvas');
+    const p = cv.getContext('2d');
+    p.clearRect(0, 0, 70, 70);
+    SKINS[id].draw(35, 35, 24, true, p);   // draw into the preview context
+  });
+}
+document.querySelectorAll('#skinPicker .skin').forEach(div => {
+  div.addEventListener('click', () => {
+    skin = parseInt(div.getAttribute('data-skin'), 10);
+    document.querySelectorAll('#skinPicker .skin').forEach(d => d.classList.remove('selected'));
+    div.classList.add('selected');
+    beep(700, 0.08, 'square', 0.05);
+  });
+});
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('againBtn').addEventListener('click', restartRun);
+document.getElementById('menuBtn').addEventListener('click', goToMenu);
+document.getElementById('resumeBtn').addEventListener('click', togglePause);
+document.getElementById('restartBtn').addEventListener('click', restartRun);
+document.getElementById('quitBtn').addEventListener('click', goToMenu);
+document.getElementById('continueBtn').addEventListener('click', closeInfo);
+document.getElementById('quizBtn').addEventListener('click', openQuiz);
+document.getElementById('pauseBtn').addEventListener('click', togglePause);
+document.getElementById('muteBtn').addEventListener('click', () => {
+  muted = !muted;
+  document.getElementById('muteBtn').innerHTML = muted ? '&#128263;' : '&#128266;';
+});
+
+// boot: idle background behind the menu, then the same loop runs the game
+document.getElementById('ecoTot').textContent = TOPICS.length;
+renderSkinPreviews();
+resetGame();
+rafId = requestAnimationFrame(gameLoop);
+
+loadNodes();
+</script>
+</body>
+</html>
