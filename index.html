@@ -10,27 +10,53 @@
 * { box-sizing:border-box; }
 body { margin:0; background:var(--bg); overflow:hidden; font-family:'Courier New',monospace; color:var(--cyan); }
 canvas { display:block; touch-action:none; }
-#ui { position:absolute; top:10px; left:12px; pointer-events:none; z-index:10; font-size:17px; text-shadow:0 0 10px var(--cyan); line-height:1.5; }
+#ui { position:absolute; top:8px; left:12px; pointer-events:none; z-index:10; font-size:clamp(11px, 1.4vw, 16px); text-shadow:0 0 10px var(--cyan); line-height:1.45; max-width:60vw; }
 #muteBtn, #pauseBtn { position:absolute; top:10px; z-index:20; background:rgba(0,229,255,0.12); color:var(--cyan); border:1px solid var(--cyan); border-radius:8px; padding:7px 13px; font-size:16px; cursor:pointer; font-family:inherit; }
 #muteBtn { right:12px; }
 #pauseBtn { right:70px; }
-.panel { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(8,8,26,0.97); padding:30px 40px; border:3px solid var(--cyan); text-align:center; border-radius:16px; z-index:30; max-width:92%; width:560px; box-shadow:0 0 60px rgba(0,229,255,0.55); }
-.panel h1 { margin:0 0 14px; color:var(--cyan); font-size:30px; letter-spacing:1px; }
-.panel h2 { margin:0 0 10px; color:var(--cyan); }
-.panel p { font-size:16px; line-height:1.55; color:#bfefff; }
-button.btn { padding:14px 34px; margin:8px 6px; font-size:18px; background:var(--cyan); color:#001018; border:none; border-radius:10px; cursor:pointer; font-weight:bold; font-family:inherit; transition:transform .08s; }
+/* Panels are centred but can NEVER exceed the viewport: they cap at 90vh
+   and scroll internally. This is what stops the title being cut off on
+   short screens (e.g. 1366x690 laptops) or in landscape on mobile. */
+.panel { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  background:rgba(8,8,26,0.97); padding:24px 32px; border:3px solid var(--cyan);
+  text-align:center; border-radius:16px; z-index:30;
+  width:560px; max-width:92vw;
+  max-height:90vh; overflow-y:auto; overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  box-shadow:0 0 60px rgba(0,229,255,0.55); }
+.panel::-webkit-scrollbar { width:8px; }
+.panel::-webkit-scrollbar-thumb { background:rgba(0,229,255,0.35); border-radius:4px; }
+.panel h1 { margin:0 0 10px; color:var(--cyan); font-size:clamp(20px, 3.4vw, 28px); letter-spacing:1px; line-height:1.2; }
+.panel h2 { margin:0 0 8px; color:var(--cyan); font-size:clamp(17px, 2.6vw, 22px); }
+.panel p { font-size:clamp(13px, 1.6vw, 15px); line-height:1.5; color:#bfefff; margin:8px 0; }
+button.btn { padding:12px 28px; margin:6px 5px; font-size:17px; background:var(--cyan); color:#001018; border:none; border-radius:10px; cursor:pointer; font-weight:bold; font-family:inherit; transition:transform .08s; }
 button.btn:hover { transform:scale(1.05); }
 button.btn.secondary { background:transparent; color:var(--cyan); border:2px solid var(--cyan); }
 button.quizOpt { display:block; width:100%; margin:8px 0; padding:13px; font-size:16px; background:rgba(0,229,255,0.1); color:var(--cyan); border:2px solid var(--cyan); border-radius:10px; cursor:pointer; font-family:inherit; text-align:left; }
 button.quizOpt:hover { background:rgba(0,229,255,0.28); }
 a { color:var(--cyan); }
+/* Very short viewports (laptops ~700px tall, phones in landscape) */
+@media (max-height: 760px) {
+  .panel { padding:16px 22px; }
+  .panel p { font-size:13px; line-height:1.4; margin:6px 0; }
+  .panel h1 { font-size:22px; margin-bottom:6px; }
+  #startBtn { font-size:19px !important; padding:13px 44px !important; }
+  .skin canvas { width:48px; height:48px; }
+  .hint, .small { font-size:11px !important; }
+}
+/* Narrow phones */
+@media (max-width: 520px) {
+  .panel { padding:16px 18px; width:94vw; }
+  button.btn { padding:11px 20px; font-size:15px; }
+  #skinPicker { gap:8px !important; }
+}
 .small { font-size:13px; color:#7fd8e8; }
 .hint { font-size:14px; color:#9fe8f5; margin-top:16px; }
 #nodeStatus { font-size:13px; margin-top:14px; color:#7fd8e8; }
-.skin { cursor:pointer; padding:6px 8px; border:2px solid transparent; border-radius:12px; font-size:12px; color:#7fd8e8; transition:.15s; }
+.skin { cursor:pointer; padding:5px 7px; border:2px solid transparent; border-radius:12px; font-size:12px; color:#7fd8e8; transition:.15s; }
 .skin:hover { border-color:rgba(0,229,255,0.4); }
 .skin.selected { border-color:var(--cyan); background:rgba(0,229,255,0.08); color:var(--cyan); }
-.skin canvas { display:block; margin:0 auto 4px; }
+.skin canvas { display:block; margin:0 auto 2px; width:56px; height:56px; }
 .tag { display:inline-block; padding:4px 12px; border-radius:20px; font-size:12px; letter-spacing:1px; border:1px solid var(--gold); color:var(--gold); margin-bottom:10px; }
 .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px; border:1px solid var(--gold); color:var(--gold); margin-left:6px; }
 </style>
@@ -49,12 +75,14 @@ a { color:var(--cyan); }
 <!-- MAIN MENU -->
 <div id="menu" class="panel">
 <h1>&#128640; SENTINEL NODE DASH</h1>
-<p>You are a data packet running through the <b>Sentinel dVPN network</b> — a decentralized bandwidth marketplace.<br><br>
+<p>You are a data packet running through the <b>Sentinel dVPN network</b> — a decentralized bandwidth marketplace.</p>
+<p style="text-align:left;display:inline-block;">
 &#9889; Collect <b style="color:var(--good)">real nodes</b> — live from Node Scorecard.<br>
-&#11088; <b style="color:var(--gold)">Residential</b> nodes (real home lines) pay <b>x2.4</b>; datacenter nodes x1.2.<br>
+&#11088; <b style="color:var(--gold)">Residential</b> nodes pay <b>x2.4</b> · datacenter x1.2.<br>
 &#9888; Dodge <b style="color:var(--danger)">trackers &amp; censorship</b>.<br>
-&#11088; Grab stars to unlock the ecosystem &mdash; <b>each topic &amp; quiz appears only ONCE per run</b>, so the game never nags you twice.</p>
-<p class="hint">TAP / SPACE / &#8593; to jump (double jump!) &nbsp;•&nbsp; P to pause</p>
+&#11088; Stars unlock the ecosystem — <b>each topic appears only ONCE</b>.
+</p>
+<p class="hint">TAP / SPACE / &#8593; = jump (double jump!) &nbsp;·&nbsp; P = pause</p>
 <div style="margin:6px 0 4px;font-size:14px;color:#7fd8e8;">CHOOSE YOUR RUNNER</div>
 <div id="skinPicker" style="display:flex;justify-content:center;gap:14px;margin-bottom:14px;">
   <div class="skin" data-skin="0"><canvas width="70" height="70"></canvas><div>Data Packet</div></div>
