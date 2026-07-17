@@ -99,6 +99,7 @@ a { color:var(--cyan); }
 <h1 style="color:var(--danger);">CONNECTION LOST</h1>
 <p id="finalScore" style="font-size:20px;"></p>
 <p class="small">Want real censorship-resistant bandwidth? Explore the <a href="https://sentinel.co" target="_blank" rel="noopener">Sentinel ecosystem</a>.</p>
+<p class="small">The nodes you collected are real - <a href="https://superpios.github.io/node-scorecard/" target="_blank" rel="noopener">inspect them on Node Scorecard</a>.</p>
 <button class="btn" id="againBtn">PLAY AGAIN</button>
 <button class="btn secondary" id="menuBtn">MAIN MENU</button>
 </div>
@@ -176,7 +177,7 @@ async function loadNodes() {
     const all = await res.json();
     const active = all.filter(n => n.status === 'active' && (n.dl_mbps || 0) > 8);
     if (!active.length) throw new Error('no active nodes');
-    nodes = active.slice(0, 500);
+    nodes = active;
     dataSource = 'live';
     setNodeStatus('&#9679; LIVE — ' + nodes.length + ' active Sentinel nodes loaded', '#22ff99');
   } catch (e) {
@@ -265,10 +266,10 @@ const TOPICS = [
    link:'https://sentinel.co',
    quiz:{q:'When do you reach for V2Ray instead of WireGuard?', opts:['When you want maximum raw speed','When WireGuard is blocked and you need anti-censorship','Never, they are identical'], correct:1}},
 
-  {id:'nextproto', tag:'ROADMAP', name:'\u{1F6E0} Incoming Protocols',
-   desc:'The next anti-censorship wave being built on top of the Sentinel stack: Xray (advanced VLESS/XTLS), Hysteria2 (fast UDP, thrives on lossy networks) and AmneziaWG (WireGuard with an obfuscated handshake that DPI cannot fingerprint).',
+  {id:'nextproto', tag:'PROTOCOLS', name:'\u{1F6E0} The New Protocol Wave \u2014 LIVE',
+   desc:'It landed. Node software v9 ships Xray (VLESS + REALITY, traffic that looks like ordinary TLS), Hysteria2 (fast UDP that thrives on lossy links) and AmneziaWG (WireGuard with an obfuscated handshake DPI cannot fingerprint) \u2014 and the first pioneer nodes running them are already live on the network.',
    link:'https://sentinel.co',
-   quiz:{q:'What do Xray, Hysteria2 and AmneziaWG have in common?', opts:['They are all crypto tokens','They are protocols designed to defeat censorship / DPI','They are node operators'], correct:1}},
+   quiz:{q:'What is the status of Xray, Hysteria2 and AmneziaWG on Sentinel?', opts:['Still only a roadmap idea','LIVE \u2014 shipped in node software v9, first pioneer nodes online','They were cancelled'], correct:1}},
 
   // --- Agents / x402 ---
   {id:'x402', tag:'AI AGENTS', name:'\u{1F916} dVPN for AI Agents (x402)',
@@ -312,6 +313,54 @@ const TOPICS = [
    link:'https://bluefrens.xyz/',
    quiz:{q:'What are Bluefrens?', opts:['A new VPN protocol','A pixel-art NFT collection celebrating the Sentinel community','A datacenter'], correct:1}},
 
+
+  // --- Privacy: why decentralized (v4, user-approved) ---
+  {id:'trustproblem', tag:'PRIVACY', name:'\u{1F513} The Trust Problem',
+   desc:'A centralized VPN sees EVERYTHING: your traffic, your payment, your email \u2014 one company holding the full picture, and "no-log" is a promise written in a policy. On Sentinel that company does not exist: traffic flows through independent operators who do not know who you are, and no single party ever holds the full picture.',
+   link:'https://sentinel.co',
+   quiz:{q:'What really protects your privacy?', opts:['A legal promise in a policy document','An architecture where no single party CAN hold all your data','A bigger company'], correct:1}},
+
+  {id:'keysnever', tag:'PRIVACY', name:'\u{1F511} Your Keys Never Leave',
+   desc:'The encryption keys (Curve25519 for WireGuard) are generated ON YOUR DEVICE. The node only ever receives your public key \u2014 not even the node operator can decrypt your traffic. End-to-end encryption by construction, not by courtesy.',
+   link:'https://sentinel.co',
+   quiz:{q:'Who can decrypt your tunnel?', opts:['The node operator','The Sentinel team','Only you \u2014 the node only has your public key'], correct:2}},
+
+  {id:'nohq', tag:'PRIVACY', name:'\u{1F3F0} No Headquarters to Raid',
+   desc:'A centralized VPN has known datacenters and a legal HQ: one court order, one block or one seizure can hit everything at once. Sentinel is 1,500+ independent operators across 80+ countries \u2014 there is no central switch to flip and no office to raid. The network survives the loss of any single node.',
+   link:'https://sentinel.co',
+   quiz:{q:'Why is a decentralized network harder to shut down?', opts:['It has better lawyers','There is no single point of failure to hit','It is invisible'], correct:1}},
+
+  {id:'noaccount', tag:'PRIVACY', name:'\u{1F3AD} No Account, No Identity',
+   desc:'Traditional VPNs ask for your email and credit card: your identity is welded to your VPN account. On Sentinel you pay per session on-chain from a wallet: no account, no email, no card. Pseudonymous by design \u2014 on-chain transactions are public, but they point to a wallet address, not to your name.',
+   link:'https://p2pscan.com/',
+   quiz:{q:'What do you need to use the Sentinel network?', opts:['An email and a credit card','A wallet \u2014 not an identity','A government ID'], correct:1}},
+
+  // --- Security: already secure by design (v5, user direction) ---
+  {id:'securebydesign', tag:'SECURITY', name:'\u{1F6E1} Secure by Design',
+   desc:'Using a Sentinel dApp is secure out of the box: encryption is automatic and end-to-end, session authorization happens on-chain, and there are no accounts or passwords to steal \u2014 because none exist. You do not configure security. It is built into the protocol.',
+   link:'https://sentinel.co',
+   quiz:{q:'What must a user configure to be secure on a Sentinel dApp?', opts:['A firewall and three plugins','Nothing \u2014 security is built into the protocol','A weekly password change'], correct:1}},
+
+  {id:'builtinguard', tag:'SECURITY', name:'\u{1F6D1} Built-in Protections',
+   desc:'Modern Sentinel clients carry the protections with them: a kill-switch that blocks traffic the instant the tunnel drops, and DNS resolved inside the tunnel so nothing leaks to your ISP. The client stands guard \u2014 not you.',
+   link:'https://sentinel.co',
+   quiz:{q:'The tunnel drops mid-session. What protects you?', opts:['You must react fast','The client\u0027s built-in kill-switch, automatically','Nothing can'], correct:1}},
+
+  {id:'seedsafe', tag:'SECURITY', name:'\u{1F510} The Only Rule',
+   desc:'The network never asks anything of you \u2014 except this: NEVER share your seed phrase or private key. Anyone asking for it \u2014 "support", airdrops, DMs \u2014 is ALWAYS a scam. That is the single user-side rule; the protocol handles everything else.',
+   link:'https://sentinel.co',
+   quiz:{q:'Someone from "support" asks for your seed phrase\u2026', opts:['Give it, they are support','It is ALWAYS a scam \u2014 no one legitimate ever asks','Only give half of it'], correct:1}},
+
+  {id:'whitelabel', tag:'BUILDERS', name:'\u{1F411} Become the Shepherd',
+   desc:'Launching your own VPN has never been easier. Creators, businesses and communities already promote VPNs through sponsorships \u2014 now they can BUILD the product instead. The Sentinel Network removes the biggest barrier: decentralized infrastructure anyone can build on, with independently operated nodes across 80+ countries. You integrate payments, subscriptions and your own brand experience; the network does the rest. The next generation of VPN companies won\u0027t all build their own networks \u2014 many will build on open infrastructure.',
+   link:'https://docs.sentinel.co',
+   quiz:{q:'What do you need to launch your own VPN brand on Sentinel?', opts:['Your own global server fleet','Just your brand and your app \u2014 the network provides the global infrastructure','A banking licence'], correct:1}},
+
+  // --- More real ecosystem (added v3, all verifiable) ---
+  {id:'slatests', tag:'NETWORK', name:'\u{1F9EA} Official SLA Tests',
+   desc:'Sentinel runs official SLA tests on the whole network: a real tunnel is opened through each node and its true speed is measured. Around 1,500 nodes are tested per run \u2014 the strongest proof a node actually serves clients. The SLA\u2713 badge on nodes in THIS game comes from these tests.',
+   link:'https://test.sentinel.co',
+   quiz:{q:'What does an SLA test actually do?', opts:['Reads the node description','Opens a REAL tunnel through the node and measures speed','Asks the operator politely'], correct:1}},
 
   // --- The data behind this game ---
   {id:'scorecard', tag:'DATA', name:'\u{1F4CA} Node Scorecard',
@@ -362,6 +411,7 @@ let lives, score, speed, streak, distance, level, jumpsLeft, bgTheme;
 let obstacles, powerups, specials, particles, floaters;
 let resiCount = 0, dcCount = 0;
 let lastSpawn = 0, lastRegen = 0, rafId = null;
+let invincibleUntil = 0, boostUntil = 0, tutUntil = 0, pendingPower = null;
 
 let highScore = 0;
 try { highScore = parseFloat(localStorage.getItem('sentinelHigh')) || 0; } catch (e) {}
@@ -426,6 +476,7 @@ function resetGame() {
   distance = 0; level = 0; jumpsLeft = 2; bgTheme = 0;
   obstacles = []; powerups = []; specials = []; particles = []; floaters = [];
   lastSpawn = Date.now(); lastRegen = 0;
+  invincibleUntil = 0; boostUntil = 0; pendingPower = null;
   seenTopics = new Set(); quizzedTopics = new Set(); currentTopic = null;
   resiCount = 0; dcCount = 0;
   player.y = groundY - player.h; player.vy = 0;
@@ -436,6 +487,7 @@ function startGame() {
   ac(); // unlock audio on user gesture
   resetGame();
   state = 'running';
+  tutUntil = Date.now() + 5000; // tutorial shows every run, first jump dismisses it
   startMusic();
 }
 
@@ -498,6 +550,7 @@ function jump() {
   if (state !== 'running' || jumpsLeft <= 0) return;
   player.vy = -19;
   jumpsLeft--;
+  tutUntil = 0;
   beep(jumpsLeft === 1 ? 520 : 660, 0.12, 'square', 0.05);
   for (let i = 0; i < 12; i++) particles.push(new Particle(player.x + 20, player.y + player.h, '#00e5ff'));
 }
@@ -578,17 +631,32 @@ function answerQuiz(i) {
   const res = document.getElementById('quizResult');
   document.querySelectorAll('#quizOpts button').forEach(b => { b.disabled = true; });
   if (i === q.correct) {
-    lives = Math.min(MAX_LIVES, lives + 3);
-    score += 1500;
+    const TECH_TAGS = ['PROTOCOL','PROTOCOLS','ROADMAP','AI AGENTS','NETWORK','NODE TYPE','TOKEN','EARN','PRIVACY','SECURITY'];
+    const isTech = TECH_TAGS.indexOf(currentTopic.tag) >= 0;
     res.style.color = '#22ff99';
-    res.textContent = '\u2705 Correct! +3 $P2P, +1500 score';
-    beep(1040, 0.3, 'triangle', 0.08);
+    if (isTech) {
+      pendingPower = Math.random() < 0.5 ? 'wg' : 'boost';
+      score += 800;
+      res.textContent = pendingPower === 'wg'
+        ? '\u2705 Correct! POWER-UP: \u26E8 WireGuard Mode \u2014 invincible 5s! (+800)'
+        : '\u2705 Correct! POWER-UP: \u26A1 P2P Boost \u2014 double score 12s! (+800)';
+      beep(1180, 0.3, 'triangle', 0.08);
+    } else {
+      lives = Math.min(MAX_LIVES, lives + 1);
+      score += 1500;
+      res.textContent = '\u2705 Correct! +1 $P2P, +1500 score';
+      beep(1040, 0.3, 'triangle', 0.08);
+    }
   } else {
     res.style.color = '#ff3366';
     res.textContent = '\u274C The answer was: ' + q.opts[q.correct];
     beep(180, 0.3, 'sawtooth', 0.07);
   }
-  setTimeout(() => { hide('quizPanel'); state = 'running'; }, 1800);
+  setTimeout(() => { hide('quizPanel'); state = 'running';
+    if (pendingPower === 'wg') { invincibleUntil = Date.now() + 5000; floaters.push(new Floater(player.x, player.y - 30, '\u26E8 WIREGUARD MODE ON', '#ffd54a')); }
+    if (pendingPower === 'boost') { boostUntil = Date.now() + 12000; floaters.push(new Floater(player.x, player.y - 30, '\u26A1 P2P BOOST x2 ON', '#22ff99')); }
+    pendingPower = null;
+  }, 1800);
 }
 
 /* ---------------- Spawning & update ------------------------- */
@@ -609,7 +677,7 @@ function spawn() {
 function update() {
   if (state !== 'running') return;
   distance += speed;
-  score += speed * 1.5;
+  score += speed * 1.5 * (Date.now() < boostUntil ? 2 : 1);
 
   // physics
   player.vy += 1.0;
@@ -648,6 +716,13 @@ function update() {
     o.y = o.baseY + Math.sin(o.wobble) * 7;
     if (o.x < -100) { obstacles.splice(i, 1); continue; }
     if (checkCollision(player, o)) {
+      if (Date.now() < invincibleUntil) {
+        obstacles.splice(i, 1);
+        for (let k = 0; k < 12; k++) particles.push(new Particle(o.x, o.y, '#ffd54a'));
+        floaters.push(new Floater(o.x - 46, o.y - 24, '\u26E8 WG SHIELD!', '#ffd54a'));
+        beep(920, 0.1, 'triangle', 0.05);
+        continue;
+      }
       lives--;
       speed = Math.max(BASE_SPEED, speed - 0.4);
       floaters.push(new Floater(o.x - 30, o.y - 30, '-1 $P2P  tracker hit!', '#ff3366'));
@@ -670,7 +745,7 @@ function update() {
       const mbps = Math.round(n.dl_mbps || 300);
       const residential = n.hosting === false;   // Scorecard: hosting=false -> home connection
       const gain = Math.floor(mbps * (residential ? 2.4 : 1.2));
-      score += gain;
+      score += (Date.now() < boostUntil ? gain * 2 : gain);
       streak++;
       if (residential) resiCount++; else dcCount++;
       speed = Math.min(MAX_SPEED, speed + 0.3);
@@ -678,7 +753,8 @@ function update() {
       const label = (n.moniker || 'node')
         + (n.country ? ' \u00B7 ' + n.country : '')
         + ' \u00B7 ' + mbps + ' Mbps'
-        + (proto ? ' \u00B7 ' + proto : '');
+        + (proto ? ' \u00B7 ' + proto : '')
+        + (n.sla_pass === true ? ' \u00B7 SLA\u2713' : '');
       const tier = residential ? '\u2605 RESIDENTIAL  x2.4' : '\u26A1 DATACENTER  x1.2';
       const col = residential ? '#ffd54a' : '#22ff99';
       floaters.push(new Floater(p.x - 70, p.y - 42, label, col));
@@ -963,6 +1039,16 @@ function drawPlayer() {
   ctx.rotate(Math.min(Math.max(player.vy * 0.026, -0.42), 0.48));
   SKINS[skin].draw(0, 0, 26, true);
   ctx.restore();
+  if (Date.now() < invincibleUntil) {
+    ctx.strokeStyle = '#ffd54a'; ctx.lineWidth = 3; ctx.globalAlpha = 0.85;
+    ctx.beginPath(); ctx.arc(cx, cy, 40 + Math.sin(Date.now() * 0.02) * 3, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  if (Date.now() < boostUntil) {
+    ctx.strokeStyle = '#22ff99'; ctx.lineWidth = 2; ctx.globalAlpha = 0.6;
+    ctx.beginPath(); ctx.arc(cx, cy, 47, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
 }
 
 /* --- Obstacles: censorship bricks, each labelled --- */
@@ -1105,6 +1191,16 @@ function gameLoop() {
   if (state !== 'menu') {
     drawEntities();
     drawPlayer();
+    if (tutUntil && Date.now() < tutUntil && state === 'running') {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(0,229,255,0.95)';
+      ctx.font = 'bold 26px monospace';
+      ctx.fillText('TAP / SPACE / \u2191  =  JUMP', W / 2, H / 2 - 80);
+      ctx.font = '16px monospace';
+      ctx.fillStyle = 'rgba(191,239,255,0.9)';
+      ctx.fillText('(double jump!)  \u00B7  P = pause', W / 2, H / 2 - 50);
+      ctx.textAlign = 'left';
+    }
     particles.forEach(p => p.draw());
     floaters.forEach(f => f.draw());
     updateHUD();
