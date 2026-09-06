@@ -65,9 +65,10 @@ a { color:var(--cyan); }
 <canvas id="game"></canvas>
 
 <div id="ui">
-<div>SCORE <span id="score">0</span> &nbsp;|&nbsp; $P2P <span id="lives">10</span>/12</div>
+<div>SCORE <span id="score">0</span> &nbsp;|&nbsp; $P2P <span id="lives">10</span>/12 &nbsp;|&nbsp; COMBO <span id="combo">0</span>x</div>
 <div>SPEED <span id="speed">1.0</span>x &nbsp;|&nbsp; NODES <span id="streak">0</span> &nbsp;|&nbsp; BEST <span id="best">0</span></div>
 <div>ECOSYSTEM <span id="eco">0</span>/<span id="ecoTot">0</span> &nbsp;|&nbsp; ★<span id="resi">0</span> res &nbsp; ⚡<span id="dc">0</span> dc</div>
+<div id="contractLine">CONTRACT —</div>
 </div>
 <button id="pauseBtn" title="Pause (P)">II</button>
 <button id="muteBtn" title="Sound on/off">&#128266;</button>
@@ -78,16 +79,16 @@ a { color:var(--cyan); }
 <p>You are a data packet running through the <b>Sentinel dVPN network</b> — a decentralized bandwidth marketplace.</p>
 <p style="text-align:left;display:inline-block;">
 &#9889; Collect <b style="color:var(--good)">real nodes</b> — live from Node Scorecard.<br>
-&#11088; <b style="color:var(--gold)">Residential</b> nodes pay <b>x2.4</b> · datacenter x1.2.<br>
-&#9888; Dodge <b style="color:var(--danger)">trackers &amp; censorship</b>.<br>
-&#11088; Stars unlock the ecosystem — <b>each topic appears only ONCE</b>.
+&#11088; <b style="color:var(--gold)">Residential</b> x2.4 · datacenter x1.2 · combo &amp; near-miss pay extra.<br>
+&#9888; Dodge <b style="color:var(--danger)">DPI / trackers / geo-blocks</b> — each moves differently.<br>
+&#11088; Stars unlock the ecosystem once. Each run has a short <b>contract</b>.
 </p>
 <p class="hint">TAP / SPACE / &#8593; = jump (double jump!) &nbsp;·&nbsp; P = pause</p>
 <div style="margin:6px 0 4px;font-size:14px;color:#7fd8e8;">CHOOSE YOUR RUNNER</div>
 <div id="skinPicker" style="display:flex;justify-content:center;gap:14px;margin-bottom:14px;">
-  <div class="skin" data-skin="0"><canvas width="70" height="70"></canvas><div>Data Packet</div></div>
-  <div class="skin selected" data-skin="1"><canvas width="70" height="70"></canvas><div>dVPN Shield</div></div>
-  <div class="skin" data-skin="2"><canvas width="70" height="70"></canvas><div>$P2P Coin</div></div>
+  <div class="skin" data-skin="0"><canvas width="70" height="70"></canvas><div>Data Packet</div><div class="hint">higher jump</div></div>
+  <div class="skin selected" data-skin="1"><canvas width="70" height="70"></canvas><div>dVPN Shield</div><div class="hint">+0.4s WG shield</div></div>
+  <div class="skin" data-skin="2"><canvas width="70" height="70"></canvas><div>$P2P Coin</div><div class="hint">+10% score</div></div>
 </div>
 <button class="btn" id="startBtn" style="font-size:24px;padding:20px 70px;">START RUN</button>
 <div id="nodeStatus">Connecting to Node Scorecard…</div>
@@ -440,13 +441,15 @@ function startMusic() {
 function stopMusic() { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } }
 
 /* ---------------- Game state ------------------------------- */
-const MAX_LIVES = 12, START_LIVES = 10, BASE_SPEED = 3.4, MAX_SPEED = 7.2;
+const MAX_LIVES = 12, START_LIVES = 10, BASE_SPEED = 3.2, MAX_SPEED = 5.6;
 let state = 'menu'; // menu | running | paused | info | quiz | over
 let lives, score, speed, streak, distance, level, jumpsLeft, bgTheme;
 let obstacles, powerups, specials, particles, floaters;
-let resiCount = 0, dcCount = 0;
+let resiCount = 0, dcCount = 0, italyCount = 0, slaCount = 0;
 let lastSpawn = 0, lastRegen = 0, rafId = null;
 let invincibleUntil = 0, boostUntil = 0, tutUntil = 0, pendingPower = null;
+let combo = 0, comboMul = 1, shake = 0, hitStop = 0;
+let contract = null, contractDone = false;
 
 let highScore = 0;
 try { highScore = parseFloat(localStorage.getItem('sentinelHigh')) || 0; } catch (e) {}
@@ -465,12 +468,22 @@ class Entity {
   constructor(kind) { // 'obstacle' | 'power' | 'special'
     this.kind = kind;
     this.x = W + 120 + Math.random() * 240;
-    this.baseY = groundY - 55 - Math.random() * 240;
-    this.y = this.baseY;
-    this.size = 46;
     this.wobble = Math.random() * Math.PI * 2;
     this.node = nodes.length ? nodes[Math.floor(Math.random() * nodes.length)] : {};
     this.brick = Math.floor(Math.random() * 6);
+    this.missed = false;
+    this.speedMul = 1;
+    this.size = 46;
+    if (kind === 'obstacle') {
+      this.obType = this.brick % 3; // 0 DPI tall, 1 tracker low/fast, 2 geoblock mid
+      if (this.obType === 0) { this.baseY = groundY - 158; this.size = 66; this.speedMul = 1.00; }
+      else if (this.obType === 1) { this.baseY = groundY - 44; this.size = 38; this.speedMul = 1.38; }
+      else { this.baseY = groundY - 168; this.size = 50; this.speedMul = 0.88; }
+    } else {
+      this.obType = -1;
+      this.baseY = groundY - 55 - Math.random() * 240;
+    }
+    this.y = this.baseY;
   }
 }
 
@@ -505,6 +518,30 @@ class Floater { // floating text (node moniker etc.)
   }
 }
 
+const CONTRACTS = [
+  {id:'italy', text:'Collect 3 Italy nodes', ok:() => italyCount >= 3},
+  {id:'sla', text:'Collect 2 SLA\u2713 nodes', ok:() => slaCount >= 2},
+  {id:'combo', text:'Reach an 8-node combo', ok:() => combo >= 8},
+  {id:'topics', text:'Discover 4 ecosystem topics', ok:() => seenTopics.size >= 4}
+];
+
+function scoreMul() {
+  const coin = (skin === 2) ? 1.1 : 1;
+  const boost = (Date.now() < boostUntil) ? 2 : 1;
+  return comboMul * coin * boost;
+}
+
+function checkContract() {
+  if (!contract || contractDone) return;
+  if (contract.ok()) {
+    contractDone = true;
+    lives = Math.min(MAX_LIVES, lives + 1);
+    boostUntil = Math.max(boostUntil, Date.now() + 8000);
+    floaters.push(new Floater(player.x - 40, player.y - 36, 'CONTRACT DONE  +1 $P2P', '#ffd54a'));
+    beep(1240, 0.22, 'triangle', 0.07);
+  }
+}
+
 /* ---------------- Core flow -------------------------------- */
 function resetGame() {
   lives = START_LIVES; score = 0; speed = BASE_SPEED; streak = 0;
@@ -513,7 +550,10 @@ function resetGame() {
   lastSpawn = Date.now(); lastRegen = 0;
   invincibleUntil = 0; boostUntil = 0; pendingPower = null;
   seenTopics = new Set(); quizzedTopics = new Set(); currentTopic = null;
-  resiCount = 0; dcCount = 0;
+  resiCount = 0; dcCount = 0; italyCount = 0; slaCount = 0;
+  combo = 0; comboMul = 1; shake = 0; hitStop = 0;
+  contract = CONTRACTS[Math.floor(Math.random() * CONTRACTS.length)];
+  contractDone = false;
   player.y = groundY - player.h; player.vy = 0;
 }
 
@@ -544,6 +584,7 @@ function endGame() {
     'Ecosystem discovered: <b>' + seenTopics.size + '/' + TOPICS.length + '</b>' +
     (mastered ? ' \u{1F3C6} MASTERED!' : '') + '<br>' +
     'Quizzes answered: <b>' + quizzedTopics.size + '</b><br>' +
+    'Contract: <b>' + (contract ? contract.text : '-') + '</b> ' + (contractDone ? 'DONE' : 'open') + '<br>' +
     'High score: <b>' + Math.floor(highScore) + '</b>' +
     (dataSource === 'live' ? '<br><span class="small">powered by live Sentinel node data</span>' : '');
   show('gameover');
@@ -583,7 +624,7 @@ function hide(id) { document.getElementById(id).style.display = 'none'; }
 /* ---------------- Input ------------------------------------ */
 function jump() {
   if (state !== 'running' || jumpsLeft <= 0) return;
-  player.vy = -19;
+  player.vy = (skin === 0) ? -21.4 : -19;
   jumpsLeft--;
   tutUntil = 0;
   beep(jumpsLeft === 1 ? 520 : 660, 0.12, 'square', 0.05);
@@ -614,14 +655,16 @@ function collectStar(x, y) {
   const left = remainingTopics();
   if (left.length === 0) {
     // Ecosystem fully explored -> silent bonus, game never pauses again
-    score += 1000;
+    score += 1000 * scoreMul();
     lives = Math.min(MAX_LIVES, lives + 1);
-    floaters.push(new Floater(x - 70, y - 20, '\u2605 ECOSYSTEM MASTERED  +1000', '#ffd54a'));
+    boostUntil = Math.max(boostUntil, Date.now() + 8000);
+    floaters.push(new Floater(x - 70, y - 20, '\u2605 ECOSYSTEM MASTERED  +1000 + BOOST', '#ffd54a'));
     beep(1200, 0.18, 'triangle', 0.06);
     return;
   }
   currentTopic = left[Math.floor(Math.random() * left.length)];
   seenTopics.add(currentTopic.id);
+  checkContract();
   state = 'info';
   document.getElementById('dappTag').textContent = currentTopic.tag;
   document.getElementById('dappTitle').textContent = currentTopic.name;
@@ -688,7 +731,7 @@ function answerQuiz(i) {
     beep(180, 0.3, 'sawtooth', 0.07);
   }
   setTimeout(() => { hide('quizPanel'); state = 'running';
-    if (pendingPower === 'wg') { invincibleUntil = Date.now() + 5000; floaters.push(new Floater(player.x, player.y - 30, '\u26E8 WIREGUARD MODE ON', '#ffd54a')); }
+    if (pendingPower === 'wg') { invincibleUntil = Date.now() + 5000 + (skin === 1 ? 400 : 0); floaters.push(new Floater(player.x, player.y - 30, '\u26E8 WIREGUARD MODE ON', '#ffd54a')); }
     if (pendingPower === 'boost') { boostUntil = Date.now() + 12000; floaters.push(new Floater(player.x, player.y - 30, '\u26A1 P2P BOOST x2 ON', '#22ff99')); }
     pendingPower = null;
   }, 1800);
@@ -696,7 +739,8 @@ function answerQuiz(i) {
 
 /* ---------------- Spawning & update ------------------------- */
 function checkCollision(a, b) {
-  return Math.abs((a.x + 15) - b.x) < 52 && Math.abs((a.y + 25) - b.y) < 52;
+  const pad = (b.size || 46) * 0.92;
+  return Math.abs((a.x + 15) - b.x) < pad && Math.abs((a.y + 25) - b.y) < pad;
 }
 
 function spawn() {
@@ -711,8 +755,11 @@ function spawn() {
 
 function update() {
   if (state !== 'running') return;
+  if (hitStop > 0) { hitStop--; return; }
+  if (shake > 0) shake *= 0.84;
   distance += speed;
-  score += speed * 1.5 * (Date.now() < boostUntil ? 2 : 1);
+  score += speed * 1.15 * scoreMul();
+  comboMul = 1 + Math.min(4, Math.floor(combo / 3)) * 0.5;
 
   // physics
   player.vy += 1.0;
@@ -725,11 +772,11 @@ function update() {
 
   spawn();
 
-  // level up every 15000 points: theme change + gentle speed ramp
-  if (Math.floor(score / 15000) > level) {
+  // level from distance only — collecting must not accelerate the run
+  if (Math.floor(distance / 3200) > level) {
     level++;
     bgTheme = (bgTheme + 1) % themes.length;
-    speed = Math.min(MAX_SPEED, speed + 0.35);
+    speed = Math.min(MAX_SPEED, speed + 0.16);
     floaters.push(new Floater(W / 2 - 60, H / 2 - 60, 'LEVEL ' + (level + 1), '#00e5ff'));
     beep(700, 0.2, 'triangle', 0.06);
   }
@@ -746,9 +793,21 @@ function update() {
   // obstacles (trackers / censorship)
   for (let i = obstacles.length - 1; i >= 0; i--) {
     const o = obstacles[i];
-    o.x -= speed * 6.5;
+    o.x -= speed * 6.5 * (o.speedMul || 1);
     o.wobble += 0.12;
-    o.y = o.baseY + Math.sin(o.wobble) * 7;
+    if (o.obType === 2) o.y = o.baseY + Math.sin(o.wobble * 1.4) * 38;
+    else if (o.obType === 0) o.y = o.baseY + Math.sin(o.wobble) * 6;
+    else o.y = o.baseY;
+    if (!o.missed && o.x + 20 < player.x) {
+      o.missed = true;
+      const dy = Math.abs((player.y + 25) - o.y);
+      if (dy < 72) {
+        const bonus = Math.floor(90 * scoreMul());
+        score += bonus;
+        floaters.push(new Floater(o.x - 20, o.y - 28, 'NEAR MISS +' + bonus, '#00e5ff'));
+        beep(1400, 0.07, 'square', 0.04);
+      }
+    }
     if (o.x < -100) { obstacles.splice(i, 1); continue; }
     if (checkCollision(player, o)) {
       if (Date.now() < invincibleUntil) {
@@ -759,8 +818,10 @@ function update() {
         continue;
       }
       lives--;
-      speed = Math.max(BASE_SPEED, speed - 0.4);
-      floaters.push(new Floater(o.x - 30, o.y - 30, '-1 $P2P  tracker hit!', '#ff3366'));
+      combo = 0; comboMul = 1;
+      shake = 10; hitStop = 3;
+      speed = Math.max(BASE_SPEED, speed - 0.22);
+      floaters.push(new Floater(o.x - 30, o.y - 30, '-1 $P2P  blocked!', '#ff3366'));
       for (let k = 0; k < 18; k++) particles.push(new Particle(o.x, o.y, '#ff3366'));
       beep(160, 0.25, 'sawtooth', 0.08);
       obstacles.splice(i, 1);
@@ -779,11 +840,14 @@ function update() {
       const n = p.node || {};
       const mbps = Math.round(n.dl_mbps || 300);
       const residential = n.hosting === false;   // Scorecard hosting=false: not classified as datacenter ASN
-      const gain = Math.floor(mbps * (residential ? 2.4 : 1.2));
-      score += (Date.now() < boostUntil ? gain * 2 : gain);
-      streak++;
+      const gain = Math.floor(mbps * (residential ? 2.4 : 1.2) * scoreMul());
+      score += gain;
+      streak++; combo++;
       if (residential) resiCount++; else dcCount++;
-      speed = Math.min(MAX_SPEED, speed + 0.3);
+      if ((n.country || '') === 'Italy') italyCount++;
+      if (n.sla_pass === true) slaCount++;
+      hitStop = 2;
+      checkContract();
       const proto = (n.protocol || '').toUpperCase();
       const label = (n.moniker || 'node')
         + (n.country ? ' \u00B7 ' + n.country : '')
@@ -1098,7 +1162,7 @@ const BLOCKS = [
 
 function drawBrick(o) {
   const b = BLOCKS[o.brick % BLOCKS.length];
-  const s = 54;
+  const s = o.size || 54;
   ctx.save();
   ctx.translate(o.x, o.y);
   ctx.shadowBlur = 26; ctx.shadowColor = '#ff3366';
@@ -1217,11 +1281,17 @@ function updateHUD() {
   document.getElementById('eco').textContent = seenTopics.size;
   document.getElementById('resi').textContent = resiCount;
   document.getElementById('dc').textContent = dcCount;
+  const cm = document.getElementById('combo');
+  if (cm) cm.textContent = comboMul.toFixed(1);
+  const cl = document.getElementById('contractLine');
+  if (cl && contract) cl.textContent = (contractDone ? 'CONTRACT DONE — ' : 'CONTRACT — ') + contract.text;
 }
 
 function gameLoop() {
   update();
   if (state === 'menu') distance += 1.2;
+  ctx.save();
+  if (shake > 0.4) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
   drawBackground();
   if (state !== 'menu') {
     drawEntities();
@@ -1240,6 +1310,7 @@ function gameLoop() {
     floaters.forEach(f => f.draw());
     updateHUD();
   }
+  ctx.restore();
   if (state === 'paused') drawPaused();
   rafId = requestAnimationFrame(gameLoop);
 }
