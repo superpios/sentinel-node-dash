@@ -366,7 +366,42 @@ const TOPICS = [
   {id:'scorecard', tag:'DATA', name:'\u{1F4CA} Node Scorecard',
    desc:'The open dashboard tracking speed, uptime, protocol and reliability of every Sentinel node — and the exact LIVE data powering the nodes you are collecting in this run.',
    link:'https://superpios.github.io/node-scorecard/',
-   quiz:{q:'The \u26A1 nodes you collect in this game are...', opts:['Randomly invented','Real Sentinel nodes, live from Node Scorecard','Old screenshots'], correct:1}}
+   quiz:{q:'The \u26A1 nodes you collect in this game are...', opts:['Randomly invented','Real Sentinel nodes, live from Node Scorecard','Old screenshots'], correct:1}},
+
+  {id:'veil', tag:'dVPN APP', name:'Veil DVPN',
+   desc:'A native Android dVPN app built on Sentinel, designed to make decentralized privacy simple, fast, and usable for everyone. Instead of relying on a single corporate VPN provider, users can route traffic through independent nodes operated by a global community.',
+   link:'https://docs.sentinel.co/get-started/apps',
+   quiz:{q:'Veil DVPN, as listed in official Sentinel docs, is\u2026',
+         opts:['A hardware wallet','A native Android dVPN on community Sentinel nodes','A Cosmos faucet'],
+         correct:1}},
+
+  {id:'katacomb', tag:'dVPN APP', name:'Katacomb VPN',
+   desc:'An open source dVPN client built by Trinity, core community member and creator of the Sentinel docs website. It supports 6 protocols: WireGuard, AmneziaWG, OpenVPN, V2Ray, XRAY, and Hysteria2.',
+   link:'https://docs.sentinel.co/get-started/apps',
+   quiz:{q:'How many protocol families does Katacomb list in official docs?',
+         opts:['2','4','6'],
+         correct:2}},
+
+  {id:'scorecardxyz', tag:'AI AGENTS', name:'nodescorecard.xyz (x402 intelligence)',
+   desc:'Machine-payable Node Scorecard API for agents. No account and no API key. An agent calls an endpoint, receives HTTP 402, signs a USDC payment, retries, and gets the measurement. This is not the VPN tunnel shop at x402.sentinel.co \u2014 this endpoint sells node intelligence (scores, recommendations, snapshots).',
+   link:'https://nodescorecard.xyz',
+   quiz:{q:'What does nodescorecard.xyz sell over x402?',
+         opts:['A monthly consumer VPN subscription','Independent Sentinel node measurements','Physical SIM cards'],
+         correct:1}},
+
+  {id:'xyzfacilitator', tag:'AI AGENTS', name:'x402 facilitator (PayAI + Solana gasless)',
+   desc:'Settlement uses facilitator https://facilitator.payai.network. Supported networks in the live manifest: Base, Solana, Polygon, Arbitrum, Avalanche. Asset is USDC. On Solana the facilitator sponsors the transaction fee, so the agent needs USDC only \u2014 no SOL. Failed requests (HTTP status >= 400) are never settled. Receipts use X-Receipt-Id and canonicalization profile jcs-strings-v0.2.',
+   link:'https://nodescorecard.xyz/manifest',
+   quiz:{q:'On Solana, a nodescorecard.xyz x402 payment\u2026',
+         opts:['Requires SOL for every call','Is gas-sponsored by the facilitator; the agent pays USDC','Settles only in $P2P'],
+         correct:1}},
+
+  {id:'p2psolana', tag:'TOKEN', name:'$P2P migration to Solana',
+   desc:'$P2P remains the Sentinel ecosystem token. Official communication: work continues on a migration to Solana; two designs under consideration are a phased burn-and-mint and a Merkle-tree claim after a snapshot. This is described as Sentinel\u2019s second migration after Ethereum \u2192 Cosmos in 2021. Timing stated by Sentinel: later in the year / before the end of the year. No official calendar day is asserted here.',
+   link:'https://sentinel.co',
+   quiz:{q:'After the planned migration, the Sentinel token is\u2026',
+         opts:['Replaced by SOL','Still $P2P','Renamed back to $DVPN only'],
+         correct:1}}
 ];
 
 // Progress: each topic shows its panel + quiz AT MOST ONCE per run.
@@ -743,7 +778,7 @@ function update() {
     if (checkCollision(player, p)) {
       const n = p.node || {};
       const mbps = Math.round(n.dl_mbps || 300);
-      const residential = n.hosting === false;   // Scorecard: hosting=false -> home connection
+      const residential = n.hosting === false;   // Scorecard hosting=false: not classified as datacenter ASN
       const gain = Math.floor(mbps * (residential ? 2.4 : 1.2));
       score += (Date.now() < boostUntil ? gain * 2 : gain);
       streak++;
