@@ -9,11 +9,17 @@ An arcade endless-runner that teaches the Sentinel dVPN ecosystem while you play
 You are a data packet running through the Sentinel decentralized bandwidth network.
 
 - ⚡ **Collect real nodes.** Every node orb is a live Sentinel node pulled from the [Node Scorecard](https://superpios.github.io/node-scorecard/) — real moniker, real country, real download speed, real protocol (WireGuard and V2Ray today, plus the first Xray, Hysteria2 and AmneziaWG pioneer nodes), and an official **SLA ✓** badge when a node has passed the network's real-world speed test.
-- ⭐ **Score multipliers reflect real-world privacy.** Collecting a residential node (a real home IP) gives a **2.4×** score bonus because residential IPs are the top privacy tier — they look like an ordinary user, so they're far harder to block. Datacenter nodes give a **1.2×** bonus for their speed, despite known IP ranges.
+- ⭐ **Score multipliers reflect the Scorecard `hosting` flag.** Nodes with `hosting === false` (not classified as a datacenter ASN) give a **2.4×** score bonus. Datacenter nodes give a **1.2×** bonus. This is the Scorecard field, not the stricter verified-residential check (geo-IP + non-hosting ASN) documented in the Scorecard README.
 - ⚠️ **Dodge the censorship bricks.** DPI, trackers, ISP logs, geo-blocks, throttling.
-- 🧠 **Learn while you play — 31 topics.** A short tutorial shows the controls at the start of every run. Every few stars a new topic is revealed, followed by a quiz. Answer correctly and you earn bonus $P2P and score — or, on technical topics (protocols, privacy, security, node types, AI-agent payments), a temporary **power-up**: ⛨ **WireGuard Mode** (5 seconds of invincibility) or ⚡ **P2P Boost** (12 seconds of double score).
+- 🧠 **Learn while you play — 36 topics.** A short tutorial shows the controls at the start of every run. Every few stars a new topic is revealed, followed by a quiz. Answer correctly and you earn bonus $P2P and score — or, on technical topics (protocols, privacy, security, node types, AI-agent payments), a temporary **power-up**: ⛨ **WireGuard Mode** (5 seconds of invincibility) or ⚡ **P2P Boost** (12 seconds of double score).
 
-Topics cover the dVPN apps built on Sentinel (Sentinel Shield, Independent VPN, Ryn VPN, DVPN by NORSE, VALT, Meile, ChibaTunnel), the tools and explorers (BlueCLI, P2PScan, SuchNode, Network Stats, Node Scorecard), the community (Bluefrens), core concepts (on-chain sessions, $P2P, WireGuard/V2Ray, the new anti-censorship protocol wave, official SLA tests, x402 payments for AI agents), and deep dives into privacy, security by design, and how to build your own VPN brand on open infrastructure.
+Topics cover:
+
+- **dVPN apps:** Sentinel Shield, Independent VPN, Ryn VPN, DVPN by NORSE, VALT, Meile, ChibaTunnel, Veil DVPN, Katacomb VPN
+- **Tools and explorers:** BlueCLI, P2PScan, SuchNode, Network Stats, Node Scorecard
+- **Agent APIs:** [x402.sentinel.co](https://x402.sentinel.co/) (dVPN tunnels for agents) and [nodescorecard.xyz](https://nodescorecard.xyz) (node intelligence over x402, including the PayAI facilitator and Solana USDC payments with sponsored fees)
+- **Community:** Bluefrens
+- **Core concepts:** on-chain sessions, $P2P, WireGuard/V2Ray, the new anti-censorship protocol wave, official SLA tests, the planned $P2P migration to Solana ($P2P remains the token; official timing is later in the year / before year end)
 
 Each topic — and its quiz — appears only once per run. Once you've seen them all, stars become pure bonus and the game stops interrupting you.
 
@@ -55,11 +61,15 @@ Serve it over HTTP rather than opening `index.html` straight from disk — a `fi
 
 Live node data comes from [Node Scorecard](https://superpios.github.io/node-scorecard/), an open dashboard tracking speed, uptime, protocol and reliability across the Sentinel network.
 
+Machine-payable copy of the same measurements: [nodescorecard.xyz](https://nodescorecard.xyz) (x402, USDC, no API key).
+
 ## Learn more about Sentinel
 
 - [sentinel.co](https://sentinel.co) — build your own dVPN
+- [dVPN apps](https://docs.sentinel.co/get-started/apps) — official client list (includes Veil DVPN and Katacomb VPN)
 - [Run a node](https://docs.sentinel.co/dvpn-node-setup) and earn real $P2P as a node operator
 - [x402.sentinel.co](https://x402.sentinel.co/) — dVPN for AI agents
+- [nodescorecard.xyz](https://nodescorecard.xyz) — node intelligence API for AI agents
 - [P2PScan](https://p2pscan.com/) — every session and payment, on-chain and public
 
 ## Disclaimer
