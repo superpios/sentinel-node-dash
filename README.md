@@ -10,7 +10,9 @@ You are a data packet running through the Sentinel decentralized bandwidth netwo
 
 - ⚡ **Collect real nodes.** Every node orb is a live Sentinel node pulled from the [Node Scorecard](https://superpios.github.io/node-scorecard/) — real moniker, real country, real download speed, real protocol (WireGuard and V2Ray today, plus the first Xray, Hysteria2 and AmneziaWG pioneer nodes), and an official **SLA ✓** badge when a node has passed the network's real-world speed test.
 - ⭐ **Score multipliers reflect the Scorecard `hosting` flag.** Nodes with `hosting === false` (not classified as a datacenter ASN) give a **2.4×** score bonus. Datacenter nodes give a **1.2×** bonus. This is the Scorecard field, not the stricter verified-residential check (geo-IP + non-hosting ASN) documented in the Scorecard README.
-- ⚠️ **Dodge the censorship bricks.** DPI, trackers, ISP logs, geo-blocks, throttling.
+- 🔥 **Combo and near-miss.** Nodes collected without taking a hit raise a combo multiplier. Passing close to a brick without touching it scores a near-miss bonus. A hit resets the combo; it does not have to end the run.
+- ⚠️ **Dodge bricks that play differently.** DPI sits high (needs a double jump), trackers stay low and move faster, geo-blocks float and weave.
+- 📋 **One contract per run.** At start the game picks a short goal (3 Italy nodes, 2 SLA✓ nodes, an 8-node combo, or 4 topics). Finish it for +1 $P2P and a brief score boost. Speed rises with distance only — collecting nodes does not accelerate the run.
 - 🧠 **Learn while you play — 36 topics.** A short tutorial shows the controls at the start of every run. Every few stars a new topic is revealed, followed by a quiz. Answer correctly and you earn bonus $P2P and score — or, on technical topics (protocols, privacy, security, node types, AI-agent payments), a temporary **power-up**: ⛨ **WireGuard Mode** (5 seconds of invincibility) or ⚡ **P2P Boost** (12 seconds of double score).
 
 Topics cover:
@@ -21,7 +23,7 @@ Topics cover:
 - **Community:** Bluefrens
 - **Core concepts:** on-chain sessions, $P2P, WireGuard/V2Ray, the new anti-censorship protocol wave, official SLA tests, the planned $P2P migration to Solana ($P2P remains the token; official timing is later in the year / before year end)
 
-Each topic — and its quiz — appears only once per run. Once you've seen them all, stars become pure bonus and the game stops interrupting you.
+Each topic — and its quiz — appears only once per run. Once you've seen them all, stars become a silent bonus plus a short boost, and the game stops interrupting you.
 
 > **Note on in-game currency:** any mention of $P2P within the game (multipliers, values) is purely educational and represents virtual points — no real cryptocurrency is earned, paid out, or expected.
 
@@ -35,7 +37,11 @@ Each topic — and its quiz — appears only once per run. Once you've seen them
 | Main menu | `M` (while paused or on game over) |
 | Start | `Enter` |
 
-Three player skins to choose from: **Data Packet**, **dVPN Shield**, **$P2P Coin**.
+Three player skins, each with one effect:
+
+- **Data Packet** — higher jump
+- **dVPN Shield** — WireGuard invincibility lasts +0.4s
+- **$P2P Coin** — +10% score
 
 ## Tech
 
