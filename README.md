@@ -1,4 +1,4 @@
-# Sentinel Node Dash
+# Sentinel Node Dash ![Node Dash](docs/logo-wordmark.png)
 
 An arcade endless-runner that teaches the Sentinel dVPN ecosystem while you play — powered by live node data.
 
